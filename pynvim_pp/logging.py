@@ -1,7 +1,7 @@
 from logging import ERROR, WARN, Handler, LogRecord, getLogger
 from pathlib import Path
 
-from pynvim.api.nvim import Nvim
+from pynvim import Nvim
 
 log = getLogger(Path(__file__).resolve().parent.name)
 log.setLevel(WARN)

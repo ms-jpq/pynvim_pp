@@ -20,9 +20,9 @@ from typing import (
 from uuid import uuid4
 
 from pynvim import Nvim
-from python.nvim.lib import async_call, go
 
 from .atomic import Atomic
+from .lib import async_call, go
 from .logging import log
 
 T = TypeVar("T")
@@ -41,7 +41,9 @@ class RpcCallable(Generic[T]):
             raise ValueError()
         else:
             self.name = name if name else f"{handler.__module__}.{handler.__qualname__}"
-            self.remote_name = f"{self.name}_{uuid4().hex}".replace(".", "_").capitalize()
+            self.remote_name = f"{self.name}_{uuid4().hex}".replace(
+                ".", "_"
+            ).capitalize()
             self.blocking = blocking
             self._handler = handler
 

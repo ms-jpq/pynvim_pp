@@ -4,7 +4,7 @@ from typing import Iterable, Iterator
 
 from pynvim import Nvim
 
-from ..nvim.atomic import Atomic
+from .atomic import Atomic
 
 
 def _walk(path: Path) -> Iterator[Path]:
