@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from asyncio.coroutines import iscoroutinefunction
-from asyncio.tasks import Task
 from os import linesep
 from typing import (
     Any,
@@ -47,7 +46,7 @@ class RpcCallable(Generic[T]):
             self.blocking = blocking
             self._handler = handler
 
-    def __call__(self, nvim: Nvim, *args: Any) -> Union[T, Task[T]]:
+    def __call__(self, nvim: Nvim, *args: Any) -> Union[T, Awaitable[T]]:
         if iscoroutinefunction(self._handler):
             aw = cast(Awaitable[T], self._handler(nvim, *args))
             return go(aw)
