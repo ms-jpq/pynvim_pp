@@ -3,7 +3,7 @@ from asyncio.tasks import Task, run_coroutine_threadsafe, sleep
 from math import inf
 from os import linesep
 from threading import Thread
-from typing import Any, Final, MutableMapping, Protocol, Sequence, TypeVar
+from typing import Any, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
@@ -27,7 +27,7 @@ class Client(Protocol):
 
 class BasicClient(Client):
     def __init__(self) -> None:
-        self._handlers: Final[MutableMapping[str, RpcCallable]] = {}
+        self._handlers: MutableMapping[str, RpcCallable] = {}
 
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
         name, args = msg
