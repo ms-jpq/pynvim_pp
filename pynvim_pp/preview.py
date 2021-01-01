@@ -1,17 +1,25 @@
-from typing import Sequence
+from typing import Iterator, Optional, Sequence
 
 from pynvim import Nvim
 from pynvim.api import Buffer, Tabpage, Window
 
 
-def _open_preview(nvim: Nvim) -> Window:
-    tab: Tabpage = nvim.api.get_current_tabpage()
+def preview_windows_in_tab(
+    nvim: Nvim, tab: Optional[Tabpage] = None
+) -> Iterator[Window]:
+    tab = tab or nvim.api.get_current_tabpage()
     wins: Sequence[Window] = nvim.api.tabpage_list_wins(tab)
     for win in wins:
         opt = nvim.api.win_get_option(win, "previewwindow")
         if opt:
-            nvim.api.set_current_win(win)
-            return win
+            yield win
+
+
+def _open_preview(nvim: Nvim) -> Window:
+    win = next(preview_windows_in_tab(nvim), None)
+    if win:
+        nvim.api.set_current_win(win)
+        return win
     else:
         nvim.api.command("new")
         win = nvim.api.get_current_win()
