@@ -15,15 +15,18 @@ def _open_preview(nvim: Nvim) -> Window:
     else:
         nvim.api.command("new")
         win = nvim.api.get_current_win()
+        buf: Buffer = nvim.api.win_get_buf(win)
         nvim.api.win_set_option(win, "previewwindow", True)
+        nvim.api.buf_set_option(buf, "bufhidden", "wipe")
         height = nvim.options["previewheight"]
         nvim.api.win_set_height(win, height)
         return win
 
 
-def set_preview(nvim: Nvim, preview: str) -> None:
+def set_preview(nvim: Nvim, preview: str) -> Buffer:
     win = _open_preview(nvim)
     buf: Buffer = nvim.api.win_get_buf(win)
     nvim.api.buf_set_option(buf, "modifiable", True)
     nvim.api.buf_set_lines(buf, 0, -1, True, preview.splitlines())
     nvim.api.buf_set_option(buf, "modifiable", False)
+    return buf
