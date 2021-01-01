@@ -34,6 +34,7 @@ def _open_preview(nvim: Nvim) -> Window:
 def set_preview(nvim: Nvim, preview: str) -> Buffer:
     win = _open_preview(nvim)
     buf: Buffer = nvim.api.win_get_buf(win)
+    nvim.api.buf_set_option(buf, "buftype", "nofile")
     nvim.api.buf_set_option(buf, "modifiable", True)
     nvim.api.buf_set_lines(buf, 0, -1, True, preview.splitlines())
     nvim.api.buf_set_option(buf, "modifiable", False)
