@@ -4,10 +4,14 @@ from typing import Iterable, Literal, Mapping, Sequence, Tuple, TypeVar, Union
 
 from pynvim import Nvim
 from pynvim.api import Buffer
+from sys import version_info
 
 T = TypeVar("T")
 
-VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
+if version_info < (3, 8):
+    VisualTypes = Union[str, None]
+else:
+    VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
 
 
 def operator_marks(
