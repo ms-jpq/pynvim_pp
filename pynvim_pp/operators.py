@@ -1,16 +1,18 @@
 from os import linesep
 from string import whitespace
-from typing import Iterable, Literal, Mapping, Sequence, Tuple, TypeVar, Union
+from sys import version_info
+from typing import Iterable, Mapping, Sequence, Tuple, TypeVar, Union
 
 from pynvim import Nvim
 from pynvim.api import Buffer
-from sys import version_info
 
 T = TypeVar("T")
 
 if version_info < (3, 8):
     VisualTypes = Union[str, None]
 else:
+    from typing import Literal
+
     VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
 
 
