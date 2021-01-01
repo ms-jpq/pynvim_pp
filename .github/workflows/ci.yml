@@ -10,7 +10,10 @@ jobs:
   mypy:
     strategy:
       matrix:
-        python_ver: [3.7, 3.8, 3.9]
+        python_ver:
+          - 3.8
+          - 3.9
+          - 3.8.2
     
     runs-on: ubuntu-latest
 
