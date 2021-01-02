@@ -1,18 +1,14 @@
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, Optional
 
 from pynvim import Nvim
 from pynvim.api import Window
 
 
 @contextmanager
-def hold_win_pos(nvim: Nvim, hold: bool) -> Iterator[None]:
-    if hold:
-        win: Window = nvim.api.get_current_win()
-    else:
-        win = None
+def hold_win_pos(nvim: Nvim, win: Optional[Window] = None) -> Iterator[None]:
+    win = win or nvim.api.get_current_win()
     try:
         yield None
     finally:
-        if win is not None:
-            nvim.api.set_current_win(win)
+        nvim.api.set_current_win(win)
