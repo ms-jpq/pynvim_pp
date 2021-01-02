@@ -60,9 +60,9 @@ def _border_buf(nvim: Nvim, width: int, height: int) -> Buffer:
     assert height >= 2
 
     buf = nvim.api.create_buf(False, True)
-    top = "╭" + "".join(repeat("─"), times=width - 2) + "╮"
-    mid = "│" + "".join(repeat("*"), times=width - 2) + "│"
-    btm = "╰" + "".join(repeat("─"), times=width - 2) + "╯"
+    top = "╭" + "".join(repeat("─", times=width - 2)) + "╮"
+    mid = "│" + "".join(repeat("*", times=width - 2)) + "│"
+    btm = "╰" + "".join(repeat("─", times=width - 2)) + "╯"
 
     lines = tuple((top, *repeat(mid, times=height - 2), btm))
     nvim.api.buf_set_option(buf, "bufhidden", "wipe")
