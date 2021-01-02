@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from itertools import islice, repeat
+from itertools import repeat
 from math import floor
 from typing import Iterator, Tuple
 from uuid import uuid4
@@ -60,11 +60,11 @@ def _border_buf(nvim: Nvim, width: int, height: int) -> Buffer:
     assert height >= 2
 
     buf = nvim.api.create_buf(False, True)
-    top = "╭" + "".join(islice(repeat("─"), width - 2)) + "╮"
-    mid = "│" + "".join(islice(repeat("*"), width - 2)) + "│"
-    btm = "╰" + "".join(islice(repeat("─"), width - 2)) + "╯"
+    top = "╭" + "".join(repeat("─"), times=width - 2) + "╮"
+    mid = "│" + "".join(repeat("*"), times=width - 2) + "│"
+    btm = "╰" + "".join(repeat("─"), times=width - 2) + "╯"
 
-    lines = tuple((top, *islice(repeat(mid), height - 2), btm))
+    lines = tuple((top, *repeat(mid, times=height - 2), btm))
     nvim.api.buf_set_option(buf, "bufhidden", "wipe")
     nvim.api.buf_set_var(buf, FLOATWIN_BORDER_BUF_VAR_NAME, True)
     nvim.api.buf_set_lines(buf, 0, -1, True, lines)
