@@ -46,15 +46,15 @@ class RpcCallable(Generic[T]):
             self.blocking = blocking
             self._handler = handler
 
-    def __call__(self, nvim: Nvim, *args: Any) -> Union[T, Awaitable[T]]:
+    def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[T, Awaitable[T]]:
         if iscoroutinefunction(self._handler):
-            aw = cast(Awaitable[T], self._handler(nvim, *args))
+            aw = cast(Awaitable[T], self._handler(nvim, *args, **kwargs))
             return go(aw)
         elif self.blocking:
-            return cast(T, self._handler(nvim, *args))
+            return cast(T, self._handler(nvim, *args, **kwargs))
         else:
             handler = cast(Callable[[Nvim, Any], T], self._handler)
-            aw = async_call(nvim, handler, nvim, *args)
+            aw = async_call(nvim, handler, nvim, *args, **kwargs)
             return go(aw)
 
 
