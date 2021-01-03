@@ -1,9 +1,9 @@
 from abc import abstractmethod
-from asyncio.tasks import Task, run_coroutine_threadsafe, sleep
+from asyncio.tasks import run_coroutine_threadsafe, sleep
 from math import inf
 from os import linesep
 from threading import Thread
-from typing import Any, MutableMapping, Protocol, Sequence, TypeVar
+from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
@@ -33,7 +33,7 @@ class BasicClient(Client):
         name, args = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
-        return None if isinstance(ret, Task) else ret
+        return None if isinstance(ret, Awaitable) else ret
 
     async def wait(self, nvim: Nvim) -> int:
         return await sleep(inf, 1)
