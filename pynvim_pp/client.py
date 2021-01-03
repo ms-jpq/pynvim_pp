@@ -7,6 +7,7 @@ from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
+from .lib import go
 from .logging import log, nvim_handler
 from .rpc import RpcCallable, nil_handler
 
@@ -33,7 +34,11 @@ class BasicClient(Client):
         name, args = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
-        return None if isinstance(ret, Awaitable) else ret
+        if isinstance(ret, Awaitable):
+            go(ret)
+            return None
+        else:
+            return ret
 
     async def wait(self, nvim: Nvim) -> int:
         return await sleep(inf, 1)

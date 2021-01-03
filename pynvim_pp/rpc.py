@@ -21,7 +21,7 @@ from uuid import uuid4
 from pynvim import Nvim
 
 from .atomic import Atomic
-from .lib import async_call, go
+from .lib import async_call
 from .logging import log
 
 T = TypeVar("T")
@@ -49,13 +49,13 @@ class RpcCallable(Generic[T]):
     def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[T, Awaitable[T]]:
         if iscoroutinefunction(self._handler):
             aw = cast(Awaitable[T], self._handler(nvim, *args, **kwargs))
-            return go(aw)
+            return aw
         elif self.blocking:
             return cast(T, self._handler(nvim, *args, **kwargs))
         else:
             handler = cast(Callable[[Nvim, Any], T], self._handler)
             aw = async_call(nvim, handler, nvim, *args, **kwargs)
-            return go(aw)
+            return aw
 
 
 RpcSpec = Tuple[str, RpcCallable[T]]
