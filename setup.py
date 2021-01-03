@@ -11,6 +11,7 @@ setup(
     name="pynvim2",
     version="0.1.0",
     python_requires=">=3.7.0",
+    install_requires=("pynvim",),
     description="Pynvim++",
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
