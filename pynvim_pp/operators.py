@@ -11,9 +11,8 @@ VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
 
 
 def writable(nvim: Nvim, buf: Buffer) -> bool:
-    is_readonly = nvim.api.buf_get_option(buf, "readonly")
     is_modifiable = nvim.api.buf_get_option(buf, "modifiable")
-    return not is_readonly and is_modifiable
+    return is_modifiable
 
 
 def operator_marks(
