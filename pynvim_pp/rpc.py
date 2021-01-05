@@ -72,7 +72,7 @@ def _new_viml_func(handler: RpcCallable[T]) -> str:
 
 
 def _name_gen(fn: Callable[..., T]) -> str:
-    return f"{fn.__module__}.{fn.__qualname__}"
+    return f"{fn.__module__}.{fn.__qualname__}".replace(".", "_").capitalize()
 
 
 class RPC:
