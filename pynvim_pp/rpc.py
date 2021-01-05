@@ -102,7 +102,7 @@ class RPC:
 
 
 def nil_handler(name: str) -> RpcCallable:
-    def handler(nvim: Nvim, *args: Any) -> None:
-        log.warn("MISSING RPC HANDLER FOR: %s - %s", name, args)
+    def handler(nvim: Nvim, *args: Any, **kwargs: Any) -> None:
+        log.warn("MISSING RPC HANDLER FOR: %s - %s - %s", name, args, kwargs)
 
     return RpcCallable(name=name, blocking=True, handler=handler)
