@@ -35,18 +35,19 @@ class RpcCallable(Generic[T]):
         blocking: bool,
         handler: Union[Callable[..., T], Callable[..., Awaitable[T]]],
     ) -> None:
-        if iscoroutinefunction(handler) and blocking:
+        self.is_async = iscoroutinefunction(handler)
+        if self.is_async and blocking:
             raise ValueError()
         else:
             self.name = name
-            self.blocking = blocking
+            self.is_blocking = blocking
             self._handler = handler
 
     def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[T, Awaitable[T]]:
-        if iscoroutinefunction(self._handler):
+        if self.is_async:
             aw = cast(Awaitable[T], self._handler(nvim, *args, **kwargs))
             return aw
-        elif self.blocking:
+        elif self.is_blocking:
             return cast(T, self._handler(nvim, *args, **kwargs))
         else:
             handler = cast(Callable[[Nvim, Any], T], self._handler)
@@ -58,7 +59,7 @@ RpcSpec = Tuple[str, RpcCallable[T]]
 
 
 def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
-    op = "request" if handler.blocking else "notify"
+    op = "request" if handler.is_blocking else "notify"
     invoke = f"return vim.rpc{op}({chan}, '{handler.name}', {{...}})"
     return f"{handler.name} = function (...) {invoke} end"
 
