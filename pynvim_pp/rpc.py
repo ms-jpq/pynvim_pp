@@ -20,7 +20,6 @@ from typing import (
 from pynvim import Nvim
 
 from .atomic import Atomic
-from .lib import async_call
 from .logging import log
 
 T = TypeVar("T")
@@ -47,12 +46,8 @@ class RpcCallable(Generic[T]):
         if self.is_async:
             aw = cast(Awaitable[T], self._handler(nvim, *args, **kwargs))
             return aw
-        elif self.is_blocking:
-            return cast(T, self._handler(nvim, *args, **kwargs))
         else:
-            handler = cast(Callable[[Nvim, Any], T], self._handler)
-            aw = async_call(nvim, handler, nvim, *args, **kwargs)
-            return aw
+            return cast(T, self._handler(nvim, *args, **kwargs))
 
 
 RpcSpec = Tuple[str, RpcCallable[T]]
