@@ -1,14 +1,19 @@
 from os import linesep
 from string import whitespace
-from typing import Iterable, Mapping, Sequence, Tuple, TypeVar, Union
+from typing import Iterable, Literal, Mapping, Sequence, Tuple, TypeVar, Union
 
 from pynvim import Nvim
 from pynvim.api import Buffer
 
 T = TypeVar("T")
 
-VisualTypes = Union[str, None]
-# VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
+VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
+
+
+def writable(nvim: Nvim, buf: Buffer) -> bool:
+    is_readonly = nvim.api.buf_get_option(buf, "readonly")
+    is_modifiable = nvim.api.buf_get_option(buf, "modifiable")
+    return not is_readonly and is_modifiable
 
 
 def operator_marks(
