@@ -16,7 +16,6 @@ from typing import (
     Union,
     cast,
 )
-from uuid import uuid4
 
 from pynvim import Nvim
 

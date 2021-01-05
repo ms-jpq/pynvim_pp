@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from inspect import currentframe
-from typing import Iterable, MutableMapping, Optional, TypeVar
+from typing import Callable, Iterable, MutableMapping, Optional, TypeVar
 from uuid import uuid4
 
 from .atomic import Atomic
 
 T = TypeVar("T")
+
+
+def _name_gen() -> str:
+    cf = currentframe()
+    pf = cf.f_back if cf else None
+    gf = pf.f_back if pf else None
+    parent_mod = str(gf.f_globals.get("__name__", "")) if gf else ""
+    mod = parent_mod or uuid4().hex
+    qualname = f"{mod}_{uuid4().hex}"
+    return qualname
 
 
 @dataclass(frozen=True)
@@ -36,8 +46,9 @@ class _A:
 
 
 class AutoCMD:
-    def __init__(self) -> None:
+    def __init__(self, name_gen: Callable[[], str] = _name_gen) -> None:
         self._autocmds: MutableMapping[str, _AuParams] = {}
+        self._name_gen = name_gen
 
     def __call__(
         self,
@@ -46,12 +57,9 @@ class AutoCMD:
         name: Optional[str] = None,
         modifiers: Iterable[str] = ("*",),
     ) -> _A:
-        cf = currentframe()
-        pf = cf.f_back if cf else None
-        parent_mod = pf.f_globals.get("__name__", "") if pf else ""
-        qualname = f"{parent_mod}_{name or uuid4().hex}"
+        c_name = name or self._name_gen()
         return _A(
-            name=qualname, events=(event, *events), modifiers=modifiers, parent=self
+            name=c_name, events=(event, *events), modifiers=modifiers, parent=self
         )
 
     def drain(self) -> Atomic:
