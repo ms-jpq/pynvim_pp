@@ -1,12 +1,12 @@
-from typing import MutableSequence, Set, Tuple
+from typing import FrozenSet, MutableSequence, Tuple
 
 
-def is_word(c: str, unifying_chars: Set[str]) -> bool:
+def is_word(c: str, unifying_chars: FrozenSet[str]) -> bool:
     return c.isalnum() or c in unifying_chars
 
 
 def gen_lhs_rhs(
-    line: str, col: int, unifying_chars: Set[str]
+    line: str, col: int, unifying_chars: FrozenSet[str]
 ) -> Tuple[Tuple[str, str], Tuple[str, str]]:
     before, after = reversed(line[:col]), iter(line[col:])
 
