@@ -35,7 +35,7 @@ class BasicClient(Client):
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
-            self._q.put_nowait((name, args, ret))
+            run_coroutine_threadsafe(self._q.put((name, args, ret)))
             return None
         else:
             return ret
