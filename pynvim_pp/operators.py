@@ -11,7 +11,7 @@ VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
 
 
 def writable(nvim: Nvim, buf: Buffer) -> bool:
-    is_modifiable = nvim.api.buf_get_option(buf, "modifiable")
+    is_modifiable: bool = nvim.api.buf_get_option(buf, "modifiable")
     return is_modifiable
 
 
