@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from asyncio import wrap_future
+from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
 from os import linesep
 from queue import SimpleQueue
@@ -36,14 +36,15 @@ class BasicClient(Client):
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
-            self._q.put_nowait((name, args, ret))
+            self._q.put((name, args, ret))
             return None
         else:
             return ret
 
     async def wait(self, nvim: Nvim) -> int:
+        loop: AbstractEventLoop = nvim.loop
         while True:
-            name, args, aw = await wrap_future(self._q.get())
+            name, args, aw = await loop.run_in_executor(None, self._q.get)
             try:
                 await aw
             except Exception as e:
