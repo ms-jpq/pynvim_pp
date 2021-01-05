@@ -32,17 +32,14 @@ RpcMsg = Tuple[str, Sequence[Any]]
 class RpcCallable(Generic[T]):
     def __init__(
         self,
-        name: Optional[str],
+        name: str,
         blocking: bool,
         handler: Union[Callable[..., T], Callable[..., Awaitable[T]]],
     ) -> None:
         if iscoroutinefunction(handler) and blocking:
             raise ValueError()
         else:
-            self.name = name if name else f"{handler.__module__}.{handler.__qualname__}"
-            self.remote_name = f"{self.name}_{uuid4().hex}".replace(
-                ".", "_"
-            ).capitalize()
+            self.name = name
             self.blocking = blocking
             self._handler = handler
 
@@ -64,19 +61,24 @@ RpcSpec = Tuple[str, RpcCallable[T]]
 def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
     op = "request" if handler.blocking else "notify"
     invoke = f"return vim.rpc{op}({chan}, '{handler.name}', {{...}})"
-    return f"{handler.remote_name} = function (...) {invoke} end"
+    return f"{handler.name} = function (...) {invoke} end"
 
 
 def _new_viml_func(handler: RpcCallable[T]) -> str:
-    head = f"function! {handler.remote_name}(...)"
-    body = f"  call v:lua.{handler.remote_name}(a:000)"
+    head = f"function! {handler.name}(...)"
+    body = f"  call v:lua.{handler.name}(a:000)"
     tail = f"endfunction"
     return linesep.join((head, body, tail))
 
 
+def _name_gen(fn: Callable[..., T]) -> str:
+    return f"{fn.__module__}.{fn.__qualname__}"
+
+
 class RPC:
-    def __init__(self) -> None:
+    def __init__(self, name_gen: Callable[[Callable[..., T]], str] = _name_gen) -> None:
         self._handlers: MutableMapping[str, RpcCallable[Any]] = {}
+        self._name_gen = name_gen
 
     def __call__(
         self,
@@ -84,7 +86,9 @@ class RPC:
         name: Optional[str] = None,
     ) -> Callable[[Callable[..., T]], RpcCallable[T]]:
         def decor(handler: Callable[..., T]) -> RpcCallable[T]:
-            wraped = RpcCallable(name=name, blocking=blocking, handler=handler)
+            c_name = name if name else self._name_gen(handler)
+
+            wraped = RpcCallable(name=c_name, blocking=blocking, handler=handler)
             self._handlers[wraped.name] = wraped
             return wraped
 
