@@ -1,7 +1,8 @@
 from abc import abstractmethod
-from asyncio.queues import Queue
+from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
 from os import linesep
+from queue import SimpleQueue
 from threading import Thread
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
@@ -28,21 +29,22 @@ class Client(Protocol):
 class BasicClient(Client):
     def __init__(self) -> None:
         self._handlers: MutableMapping[str, RpcCallable] = {}
-        self._q: Queue = Queue()
+        self._q: SimpleQueue = SimpleQueue()
 
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
         name, args = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
-            run_coroutine_threadsafe(self._q.put((name, args, ret)))
+            self._q.put_nowait((name, args, ret))
             return None
         else:
             return ret
 
     async def wait(self, nvim: Nvim) -> int:
+        loop: AbstractEventLoop = nvim.loop
         while True:
-            name, args, aw = await self._q.get()
+            name, args, aw = await loop.run_in_executor(None, self._q.get)
             try:
                 await aw
             except Exception as e:
