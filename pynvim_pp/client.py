@@ -1,13 +1,12 @@
 from abc import abstractmethod
-from asyncio.tasks import run_coroutine_threadsafe, sleep
-from math import inf
+from asyncio.queues import Queue
+from asyncio.tasks import run_coroutine_threadsafe
 from os import linesep
 from threading import Thread
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
-from .lib import go
 from .logging import log, nvim_handler
 from .rpc import RpcCallable, nil_handler
 
@@ -29,23 +28,26 @@ class Client(Protocol):
 class BasicClient(Client):
     def __init__(self) -> None:
         self._handlers: MutableMapping[str, RpcCallable] = {}
+        self._q: Queue = Queue()
 
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
         name, args = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
-            go(ret)
+            self._q.put_nowait((name, args, ret))
             return None
         else:
             return ret
 
     async def wait(self, nvim: Nvim) -> int:
-        return await sleep(inf, 1)
-
-
-def _on_err(error: str) -> None:
-    log.error("%s", error)
+        while True:
+            name, args, aw = await self._q.get()
+            try:
+                await aw
+            except Exception as e:
+                fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
+                log.exception(fmt, name, args, e)
 
 
 def run_client(nvim: Nvim, client: Client) -> int:
@@ -56,7 +58,6 @@ def run_client(nvim: Nvim, client: Client) -> int:
         except Exception as e:
             fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
             log.exception(fmt, name, args, e)
-            raise
 
     def main() -> int:
         fut = run_coroutine_threadsafe(client.wait(nvim), loop=nvim.loop)
@@ -68,7 +69,7 @@ def run_client(nvim: Nvim, client: Client) -> int:
 
     def forever() -> None:
         nvim.run_loop(
-            err_cb=_on_err,
+            err_cb=lambda err: log.error("%s", err),
             notification_cb=on_rpc,
             request_cb=on_rpc,
         )
