@@ -3,7 +3,7 @@ from asyncio.tasks import create_task
 from concurrent.futures import Future
 from functools import partial
 from os import linesep
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar, cast
 
 from pynvim import Nvim
 
@@ -23,9 +23,26 @@ def go(aw: Awaitable[T]) -> Awaitable[T]:
     return create_task(wrapper())
 
 
+def threadsafe_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    fut: Future = Future()
+
+    def cont() -> None:
+        try:
+            ret = fn(*args, **kwargs)
+        except Exception as e:
+            if not fut.cancelled():
+                fut.set_exception(e)
+        else:
+            if not fut.cancelled():
+                fut.set_result(ret)
+
+    nvim.async_call(cont)
+    return cast(T, fut.result())
+
+
 async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
     loop = get_running_loop()
-    fut = Future[T]()
+    fut: Future = Future()
 
     def cont() -> None:
         try:
