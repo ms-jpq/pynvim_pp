@@ -22,7 +22,7 @@ class Client(Protocol):
         ...
 
     @abstractmethod
-    async def wait(self, nvim: Nvim) -> int:
+    def wait(self, nvim: Nvim) -> int:
         ...
 
 
@@ -41,15 +41,20 @@ class BasicClient(Client):
         else:
             return ret
 
-    async def wait(self, nvim: Nvim) -> int:
+    def wait(self, nvim: Nvim) -> int:
         loop: AbstractEventLoop = nvim.loop
-        while True:
-            name, args, aw = await loop.run_in_executor(None, self._q.get)
-            try:
-                await aw
-            except Exception as e:
-                fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
-                log.exception(fmt, name, args, e)
+
+        async def forever() -> int:
+            while True:
+                name, args, aw = await loop.run_in_executor(None, self._q.get)
+                try:
+                    await aw
+                except Exception as e:
+                    fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
+                    log.exception(fmt, name, args, e)
+
+        fut = run_coroutine_threadsafe(forever(), loop=loop)
+        return fut.result()
 
 
 def run_client(nvim: Nvim, client: Client) -> int:
@@ -62,9 +67,8 @@ def run_client(nvim: Nvim, client: Client) -> int:
             log.exception(fmt, name, args, e)
 
     def main() -> int:
-        fut = run_coroutine_threadsafe(client.wait(nvim), loop=nvim.loop)
         try:
-            return fut.result()
+            return client.wait(nvim)
         except Exception as e:
             log.exception(e)
             raise

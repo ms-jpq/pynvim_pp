@@ -1,6 +1,7 @@
 from asyncio.events import get_running_loop
 from asyncio.tasks import create_task
 from concurrent.futures import Future
+from functools import partial
 from os import linesep
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -40,6 +41,19 @@ async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any
     return await loop.run_in_executor(None, fut.result)
 
 
+def s_write(
+    nvim: Nvim,
+    val: Any,
+    *vals: Any,
+    sep: str = " ",
+    end: str = linesep,
+    error: bool = False,
+) -> None:
+    write = nvim.api.err_write if error else nvim.api.out_write
+    msg = sep.join(str(v) for v in (val, *vals)) + end
+    write(msg)
+
+
 def write(
     nvim: Nvim,
     val: Any,
@@ -48,6 +62,5 @@ def write(
     end: str = linesep,
     error: bool = False,
 ) -> Awaitable[None]:
-    write = nvim.api.err_write if error else nvim.api.out_write
-    msg = sep.join(str(v) for v in (val, *vals)) + end
-    return go(async_call(nvim, write, msg))
+    p = partial(s_write, nvim, val, *vals, sep=sep, end=end, error=error)
+    return go(async_call(nvim, p))
