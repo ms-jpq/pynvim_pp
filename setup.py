@@ -7,6 +7,7 @@ from setuptools import find_packages, setup
 packages = find_packages(exclude=("tests*",))
 package_data = {pkg: ("py.typed",) for pkg in packages}
 
+
 setup(
     name="pynvim2",
     version="0.1.0",
