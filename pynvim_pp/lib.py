@@ -58,7 +58,7 @@ async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any
     return await loop.run_in_executor(None, fut.result)
 
 
-def s_write(
+def write(
     nvim: Nvim,
     val: Any,
     *vals: Any,
@@ -71,7 +71,7 @@ def s_write(
     write(msg)
 
 
-def write(
+def awrite(
     nvim: Nvim,
     val: Any,
     *vals: Any,
@@ -79,5 +79,5 @@ def write(
     end: str = linesep,
     error: bool = False,
 ) -> Awaitable[None]:
-    p = partial(s_write, nvim, val, *vals, sep=sep, end=end, error=error)
+    p = partial(write, nvim, val, *vals, sep=sep, end=end, error=error)
     return go(async_call(nvim, p))
