@@ -6,8 +6,8 @@ from pynvim.api import Buffer, Tabpage, Window
 from .api import (
     buf_set_lines,
     buf_set_option,
+    cur_tab,
     cur_window,
-    current_tab,
     set_cur_window,
     tab_list_wins,
     win_get_buf,
@@ -19,7 +19,7 @@ from .api import (
 def preview_windows_in_tab(
     nvim: Nvim, tab: Optional[Tabpage] = None
 ) -> Iterator[Window]:
-    tab = tab or current_tab(nvim)
+    tab = tab or cur_tab(nvim)
     wins = tab_list_wins(nvim, tab=tab)
     for win in wins:
         opt: bool = win_get_option(nvim, win=win, key="previewwindow")
