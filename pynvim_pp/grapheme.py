@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Final, Iterable, Iterator, NewType, Sequence, Union
+from typing import Any, Iterable, Iterator, NewType, Sequence, Union, cast
 
 grapheme = NewType("grapheme", str)
 
@@ -17,8 +17,17 @@ def join(
 
 
 class Grapheme:
-    def __init__(self, glyphs: Sequence[grapheme]) -> None:
-        self._body: Final[Sequence[grapheme]] = glyphs
+    def __init__(
+        self, glyphs: Union[str, grapheme, Sequence[grapheme], Grapheme]
+    ) -> None:
+        if isinstance(glyphs, str):
+            self._body = new(glyphs)
+        elif isinstance(glyphs, Sequence):
+            self._body = cast(Sequence[grapheme], glyphs)
+        elif isinstance(glyphs, Grapheme):
+            self._body = glyphs._body
+        else:
+            raise ValueError(glyphs)
 
     def __len__(self) -> int:
         return len(self._body)
@@ -46,4 +55,7 @@ class Grapheme:
 
     def __getitem__(self, index: Union[int, slice]) -> Grapheme:
         glyph = self._body.__getitem__(index)
-        return Grapheme((glyph,))
+        if isinstance(glyph, Sequence):
+            return Grapheme(glyph)
+        else:
+            return Grapheme((glyph,))
