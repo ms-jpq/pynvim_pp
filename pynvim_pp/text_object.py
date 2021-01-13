@@ -1,22 +1,31 @@
-from typing import FrozenSet, MutableSequence, Tuple
+from dataclasses import dataclass
+from typing import FrozenSet, MutableSequence
 
 
 def is_word(c: str, unifying_chars: FrozenSet[str]) -> bool:
     return c.isalnum() or c in unifying_chars
 
 
-def gen_lhs_rhs(
-    line: str, col: int, unifying_chars: FrozenSet[str]
-) -> Tuple[Tuple[str, str], Tuple[str, str]]:
-    before, after = reversed(line[:col]), iter(line[col:])
+@dataclass(frozen=True)
+class SplitCtx:
+    lhs: str
+    rhs: str
+    word_lhs: str
+    word_rhs: str
+    syms_lhs: str
+    syms_rhs: str
 
-    words_lhs: MutableSequence[str] = []
+
+def gen_lhs_rhs(line: str, col: int, unifying_chars: FrozenSet[str]) -> SplitCtx:
+    lhs, rhs = line[:col], line[col:]
+
+    word_lhs: MutableSequence[str] = []
     syms_lhs: MutableSequence[str] = []
-    words_rhs: MutableSequence[str] = []
+    word_rhs: MutableSequence[str] = []
     syms_rhs: MutableSequence[str] = []
 
     encountered_sym = False
-    for char in before:
+    for char in reversed(lhs):
         is_w = is_word(char, unifying_chars=unifying_chars)
         if encountered_sym:
             if is_w:
@@ -25,13 +34,13 @@ def gen_lhs_rhs(
                 syms_lhs.append(char)
         else:
             if is_w:
-                words_lhs.append(char)
+                word_lhs.append(char)
             else:
                 syms_lhs.append(char)
                 encountered_sym = True
 
     encountered_sym = False
-    for char in after:
+    for char in rhs:
         is_w = is_word(char, unifying_chars=unifying_chars)
         if encountered_sym:
             if is_w:
@@ -40,11 +49,17 @@ def gen_lhs_rhs(
                 syms_rhs.append(char)
         else:
             if is_w:
-                words_rhs.append(char)
+                word_rhs.append(char)
             else:
                 syms_rhs.append(char)
                 encountered_sym = True
 
-    words = "".join(reversed(words_lhs)), "".join(words_rhs)
-    syms = "".join(reversed(syms_lhs)), "".join(syms_rhs)
-    return words, syms
+    ctx = SplitCtx(
+        lhs=lhs,
+        rhs=rhs,
+        word_lhs="".join(reversed(word_lhs)),
+        word_rhs="".join(word_rhs),
+        syms_lhs="".join(reversed(syms_lhs)),
+        syms_rhs="".join(syms_rhs),
+    )
+    return ctx
