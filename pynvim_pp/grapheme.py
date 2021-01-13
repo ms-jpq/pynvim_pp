@@ -1,11 +1,10 @@
-from typing import Iterable, Iterator, NewType
+from typing import Iterable, NewType, Sequence
 
 grapheme = NewType("grapheme", str)
 
-# TODO: how do I do grapheme without dependencies?
-def break_into(string: str) -> Iterator[grapheme]:
-    for char in string:
-        yield grapheme(char)
+
+def break_into(string: str) -> Sequence[grapheme]:
+    return tuple(map(grapheme, string))
 
 
 def join(chars: Iterable[grapheme]) -> str:

@@ -10,8 +10,8 @@ def is_word(c: grapheme, unifying_chars: FrozenSet[grapheme]) -> bool:
 def gen_lhs_rhs(
     line: str, col: int, unifying_chars: FrozenSet[grapheme]
 ) -> Tuple[Tuple[str, str], Tuple[str, str]]:
-    graphemes = tuple(break_into(line))
-    before, after = reversed(graphemes[:col]), iter(graphemes[col:])
+    glyphs = break_into(line)
+    before, after = reversed(glyphs[:col]), iter(glyphs[col:])
 
     words_lhs: MutableSequence[grapheme] = []
     syms_lhs: MutableSequence[grapheme] = []
