@@ -6,7 +6,12 @@ from pynvim.api.common import NvimError
 T = TypeVar("T")
 
 
-def current_tab(nvim: Nvim) -> Tabpage:
+def get_cwd(nvim: Nvim) -> str:
+    cwd: str = nvim.funcs.getcwd()
+    return cwd
+
+
+def cur_tab(nvim: Nvim) -> Tabpage:
     tab: Tabpage = nvim.api.get_current_tabpage()
     return tab
 
