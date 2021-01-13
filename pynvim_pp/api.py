@@ -102,6 +102,14 @@ def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Union[str, int, bool]) -
     nvim.api.buf_set_var(buf, key, val)
 
 
+def win_close(nvim: Nvim, win: Window) -> None:
+    nvim.api.win_close(win, True)
+
+
+def buf_close(nvim: Nvim, buf: Buffer) -> None:
+    nvim.api.buf_delete(buf, {"force": True})
+
+
 def win_get_cursor(nvim: Nvim, win: Window) -> Tuple[int, int]:
     """
     col is byte indexed
@@ -122,6 +130,11 @@ def win_set_cursor(nvim: Nvim, win: Window, row: int, col: int) -> None:
 def buf_line_count(nvim: Nvim, buf: Buffer) -> int:
     count: int = nvim.api.buf_line_count(buf)
     return count
+
+
+def buf_name(nvim: Nvim, buf: Buffer) -> str:
+    name: str = nvim.api.buf_get_name(buf)
+    return name
 
 
 def buf_get_lines(nvim: Nvim, buf: Buffer, lo: int, hi: int) -> Sequence[str]:
