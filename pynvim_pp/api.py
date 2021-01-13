@@ -1,6 +1,7 @@
-from typing import Sequence, Tuple, Union, TypeVar
+from typing import Optional, Sequence, Tuple, TypeVar, Union
 
 from pynvim.api import Buffer, Nvim, Tabpage, Window
+from pynvim.api.common import NvimError
 
 T = TypeVar("T")
 
@@ -65,6 +66,32 @@ def buf_set_option(
     nvim: Nvim, buf: Buffer, key: str, val: Union[str, int, bool]
 ) -> None:
     nvim.api.buf_set_option(buf, key, val)
+
+
+def win_get_var(nvim: Nvim, win: Window, key: str) -> Optional[T]:
+    try:
+        opt: T = nvim.api.win_get_var(win, key)
+    except NvimError:
+        return None
+    else:
+        return opt
+
+
+def win_set_var(nvim: Nvim, win: Window, key: str, val: Union[str, int, bool]) -> None:
+    nvim.api.win_set_var(win, key, val)
+
+
+def buf_get_var(nvim: Nvim, buf: Buffer, key: str) -> Optional[T]:
+    try:
+        opt: T = nvim.api.buf_get_var(buf, key)
+    except NvimError:
+        return None
+    else:
+        return opt
+
+
+def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Union[str, int, bool]) -> None:
+    nvim.api.buf_set_var(buf, key, val)
 
 
 def win_get_cursor(nvim: Nvim, win: Window) -> Tuple[int, int]:
