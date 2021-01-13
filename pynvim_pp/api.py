@@ -145,14 +145,18 @@ def buf_set_mark(nvim: Nvim, buf: Buffer, mark: str, row: int, col: int) -> None
     nvim.funcs.setpos(marked, (buf.number, row + 1, col + 1, 0))
 
 
-def create_buf(nvim: Nvim, listed: bool, scratch: bool, wipe: bool) -> Buffer:
+def create_buf(
+    nvim: Nvim, listed: bool, scratch: bool, wipe: bool, nofile: bool
+) -> Buffer:
     buf: Buffer = nvim.api.create_buf(listed, scratch)
     if wipe:
         buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
+    if nofile:
+        buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     return buf
 
 
-def encoded_col(nvim: Nvim, buf: Buffer, row: int, col: int) -> int:
+def str_col_pos(nvim: Nvim, buf: Buffer, row: int, col: int) -> int:
     """
     byte indexed col -> utf-8 encoded col
     """

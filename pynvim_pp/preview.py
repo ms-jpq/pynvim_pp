@@ -1,16 +1,28 @@
-from typing import Iterator, Optional, Sequence
+from typing import Iterator, Optional
 
 from pynvim import Nvim
 from pynvim.api import Buffer, Tabpage, Window
+
+from .api import (
+    buf_set_lines,
+    buf_set_option,
+    cur_window,
+    current_tab,
+    set_cur_window,
+    tab_list_wins,
+    win_get_buf,
+    win_get_option,
+    win_set_option,
+)
 
 
 def preview_windows_in_tab(
     nvim: Nvim, tab: Optional[Tabpage] = None
 ) -> Iterator[Window]:
-    tab = tab or nvim.api.get_current_tabpage()
-    wins: Sequence[Window] = nvim.api.tabpage_list_wins(tab)
+    tab = tab or current_tab(nvim)
+    wins = tab_list_wins(nvim, tab=tab)
     for win in wins:
-        opt = nvim.api.win_get_option(win, "previewwindow")
+        opt: bool = win_get_option(nvim, win=win, key="previewwindow")
         if opt:
             yield win
 
@@ -18,14 +30,14 @@ def preview_windows_in_tab(
 def _open_preview(nvim: Nvim) -> Window:
     win = next(preview_windows_in_tab(nvim), None)
     if win:
-        nvim.api.set_current_win(win)
+        set_cur_window(nvim, win=win)
         return win
     else:
         nvim.api.command("new")
-        win = nvim.api.get_current_win()
-        buf: Buffer = nvim.api.win_get_buf(win)
-        nvim.api.win_set_option(win, "previewwindow", True)
-        nvim.api.buf_set_option(buf, "bufhidden", "wipe")
+        win = cur_window(nvim)
+        buf = win_get_buf(nvim, win=win)
+        win_set_option(nvim, win=win, key="previewwindow", val=True)
+        buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
         height = nvim.options["previewheight"]
         nvim.api.win_set_height(win, height)
         return win
@@ -33,9 +45,9 @@ def _open_preview(nvim: Nvim) -> Window:
 
 def set_preview(nvim: Nvim, preview: str) -> Buffer:
     win = _open_preview(nvim)
-    buf: Buffer = nvim.api.win_get_buf(win)
-    nvim.api.buf_set_option(buf, "buftype", "nofile")
-    nvim.api.buf_set_option(buf, "modifiable", True)
-    nvim.api.buf_set_lines(buf, 0, -1, True, preview.splitlines())
-    nvim.api.buf_set_option(buf, "modifiable", False)
+    buf = win_get_buf(nvim, win=win)
+    buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
+    buf_set_option(nvim, buf=buf, key="modifiable", val=True)
+    buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview.splitlines())
+    buf_set_option(nvim, buf=buf, key="modifiable", val=False)
     return buf
