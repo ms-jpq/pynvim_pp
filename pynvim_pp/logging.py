@@ -1,4 +1,5 @@
 from logging import ERROR, WARN, Handler, LogRecord, getLogger
+from os import linesep
 from pathlib import Path
 
 from pynvim import Nvim
@@ -10,7 +11,8 @@ log.setLevel(WARN)
 def nvim_handler(nvim: Nvim) -> Handler:
     class NvimHandler(Handler):
         def handle(self, record: LogRecord) -> None:
-            msg = self.format(record)
+            msg = self.format(record) + linesep
+
             if record.levelno >= ERROR:
                 nvim.async_call(nvim.err_write, msg)
             else:

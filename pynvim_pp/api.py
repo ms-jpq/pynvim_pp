@@ -16,6 +16,10 @@ def cur_window(nvim: Nvim) -> Window:
     return win
 
 
+def set_cur_window(nvim: Nvim, win: Window) -> None:
+    nvim.api.set_current_win(win)
+
+
 def cur_buf(nvim: Nvim) -> Buffer:
     buf: Buffer = nvim.api.get_current_buf()
     return buf
@@ -44,6 +48,10 @@ def tab_list_wins(nvim: Nvim, tab: Tabpage) -> Sequence[Window]:
 def win_get_buf(nvim: Nvim, win: Window) -> Buffer:
     buf: Buffer = nvim.api.win_get_buf(win)
     return buf
+
+
+def win_set_buf(nvim: Nvim, win: Window, buf: Buffer) -> None:
+    nvim.api.win_set_buf(win, buf)
 
 
 def win_get_option(nvim: Nvim, win: Window, key: str) -> T:
@@ -135,6 +143,13 @@ def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> Tuple[int, int]:
 def buf_set_mark(nvim: Nvim, buf: Buffer, mark: str, row: int, col: int) -> None:
     marked = "'" + mark
     nvim.funcs.setpos(marked, (buf.number, row + 1, col + 1, 0))
+
+
+def create_buf(nvim: Nvim, listed: bool, scratch: bool, wipe: bool) -> Buffer:
+    buf: Buffer = nvim.api.create_buf(listed, scratch)
+    if wipe:
+        buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
+    return buf
 
 
 def encoded_col(nvim: Nvim, buf: Buffer, row: int, col: int) -> int:
