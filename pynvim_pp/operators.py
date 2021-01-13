@@ -5,6 +5,8 @@ from typing import Iterable, Literal, Mapping, Sequence, Tuple, TypeVar, Union
 from pynvim import Nvim
 from pynvim.api import Buffer
 
+from .grapheme import break_into, join
+
 T = TypeVar("T")
 
 VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
@@ -38,12 +40,14 @@ def get_selected(nvim: Nvim, buf: Buffer, visual_type: VisualTypes) -> str:
     row1, row2 = row1 - 1, row2 - 1 + 1
 
     lines: Sequence[str] = nvim.api.buf_get_lines(buf, row1, row2, True)
+    grapheme_lines = tuple(tuple(break_into(line)) for line in lines)
+
     if len(lines) == 1:
-        return lines[0][col1 : col2 + 1]
+        return join(grapheme_lines[0][col1 : col2 + 1])
     else:
-        head = lines[0][col1:]
-        body = lines[1:-1]
-        tail = lines[-1][: col2 + 1]
+        head = join(grapheme_lines[0][col1:])
+        body = map(join, grapheme_lines[1:-1])
+        tail = join(grapheme_lines[-1][: col2 + 1])
         return linesep.join((head, *body, tail))
 
 

@@ -1,19 +1,22 @@
 from typing import FrozenSet, MutableSequence, Tuple
 
+from .grapheme import break_into, grapheme, join
 
-def is_word(c: str, unifying_chars: FrozenSet[str]) -> bool:
+
+def is_word(c: grapheme, unifying_chars: FrozenSet[grapheme]) -> bool:
     return c.isalnum() or c in unifying_chars
 
 
 def gen_lhs_rhs(
-    line: str, col: int, unifying_chars: FrozenSet[str]
+    line: str, col: int, unifying_chars: FrozenSet[grapheme]
 ) -> Tuple[Tuple[str, str], Tuple[str, str]]:
-    before, after = reversed(line[:col]), iter(line[col:])
+    graphemes = tuple(break_into(line))
+    before, after = reversed(graphemes[:col]), iter(graphemes[col:])
 
-    words_lhs: MutableSequence[str] = []
-    syms_lhs: MutableSequence[str] = []
-    words_rhs: MutableSequence[str] = []
-    syms_rhs: MutableSequence[str] = []
+    words_lhs: MutableSequence[grapheme] = []
+    syms_lhs: MutableSequence[grapheme] = []
+    words_rhs: MutableSequence[grapheme] = []
+    syms_rhs: MutableSequence[grapheme] = []
 
     encountered_sym = False
     for char in before:
@@ -45,6 +48,6 @@ def gen_lhs_rhs(
                 syms_rhs.append(char)
                 encountered_sym = True
 
-    words = "".join(reversed(words_lhs)), "".join(words_rhs)
-    syms = "".join(reversed(syms_lhs)), "".join(syms_rhs)
+    words = join(reversed(words_lhs)), join(words_rhs)
+    syms = join(reversed(syms_lhs)), join(syms_rhs)
     return words, syms
