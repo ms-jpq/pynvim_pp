@@ -142,6 +142,11 @@ def buf_name(nvim: Nvim, buf: Buffer) -> str:
     return name
 
 
+def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
+    filetype: str = buf_get_option(nvim, buf=buf, key="filetype")
+    return filetype
+
+
 def buf_get_lines(nvim: Nvim, buf: Buffer, lo: int, hi: int) -> Sequence[str]:
     lines: Sequence[str] = nvim.api.buf_get_lines(buf, lo, hi, True)
     return lines
