@@ -177,14 +177,3 @@ def create_buf(
     if nofile:
         buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     return buf
-
-
-def str_col_pos(nvim: Nvim, buf: Buffer, row: int, col: int) -> int:
-    """
-    byte indexed col -> utf-8 encoded col
-    """
-
-    lines = buf_get_lines(nvim, buf=buf, lo=row, hi=row + 1)
-    line = next(iter(lines))
-    parted = nvim.funcs.strpart(line, 0, col)
-    return len(parted)
