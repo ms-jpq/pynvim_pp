@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, MutableMapping, MutableSequence, Sequence, Tuple
+from typing import Any, Iterator, MutableMapping, MutableSequence, Sequence, Tuple, cast
 
 from pynvim import Nvim, NvimError
 
@@ -63,7 +63,7 @@ class Atomic:
     def __getattr__(self, name: str) -> _A:
         return _A(name=name, parent=self)
 
-    def commit(self, nvim: Nvim) -> _NS:
+    def commit(self, nvim: Nvim) -> Sequence[Any]:
         if self._commited:
             raise RuntimeError()
         else:
@@ -79,4 +79,4 @@ class Atomic:
                 raise NvimError(err_msg, self._instructions[idx])
             else:
                 self._resultset[:] = out
-                return _NS(self)
+                return cast(Sequence[str], out)
