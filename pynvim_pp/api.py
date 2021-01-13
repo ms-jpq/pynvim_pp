@@ -184,7 +184,7 @@ def str_col_pos(nvim: Nvim, buf: Buffer, row: int, col: int) -> int:
     byte indexed col -> utf-8 encoded col
     """
 
-    lines: Sequence[str] = nvim.api.buf_get_lines(buf, row - 1, row, True)
+    lines = buf_get_lines(nvim, buf=buf, lo=row, hi=row + 1)
     line = next(iter(lines))
     parted = nvim.funcs.strpart(line, 0, col)
     return len(parted)
