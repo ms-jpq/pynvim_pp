@@ -23,7 +23,7 @@ def operator_marks(
     mark1, mark2 = ("[", "]") if visual_type else ("<", ">")
     row1, col1 = buf_get_mark(nvim, buf=buf, mark=mark1)
     row2, col2 = buf_get_mark(nvim, buf=buf, mark=mark2)
-    return (row1, col1), (row2, col2 + 1)
+    return (row1, col1), (row2, col2)
 
 
 def set_visual_selection(
