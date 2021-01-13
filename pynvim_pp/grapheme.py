@@ -42,7 +42,7 @@ class Grapheme:
         return (Grapheme((g,)) for g in reversed(self._body))
 
     def __str__(self) -> str:
-        return join(self._body)
+        return join("", self._body)
 
     def __getitem__(self, index: Union[int, slice]) -> Grapheme:
         glyph = self._body.__getitem__(index)
