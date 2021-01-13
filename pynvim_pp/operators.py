@@ -5,7 +5,7 @@ from typing import Iterable, Literal, Mapping, Sequence, Tuple, TypeVar, Union
 from pynvim import Nvim
 from pynvim.api import Buffer
 
-from .grapheme import break_into, join
+from .grapheme import Grapheme
 
 T = TypeVar("T")
 
@@ -40,14 +40,13 @@ def get_selected(nvim: Nvim, buf: Buffer, visual_type: VisualTypes) -> str:
     row1, row2 = row1 - 1, row2 - 1 + 1
 
     lines: Sequence[str] = nvim.api.buf_get_lines(buf, row1, row2, True)
-    glyphs_lines = tuple(break_into(line) for line in lines)
 
     if len(lines) == 1:
-        return join(glyphs_lines[0][col1 : col2 + 1])
+        return str(Grapheme(lines[0])[col1 : col2 + 1])
     else:
-        head = join(glyphs_lines[0][col1:])
-        body = map(join, glyphs_lines[1:-1])
-        tail = join(glyphs_lines[-1][: col2 + 1])
+        head = str(Grapheme(lines[0])[col1:])
+        body = lines[1:-1]
+        tail = str(Grapheme(lines[-1])[: col2 + 1])
         return linesep.join((head, *body, tail))
 
 
