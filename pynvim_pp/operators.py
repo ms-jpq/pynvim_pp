@@ -18,9 +18,6 @@ def writable(nvim: Nvim, buf: Buffer) -> bool:
 def operator_marks(
     nvim: Nvim, buf: Buffer, visual_type: VisualTypes
 ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    """
-    (1, 0) indexed
-    """
 
     mark1, mark2 = ("[", "]") if visual_type else ("<", ">")
     row1, col1 = nvim.api.buf_get_mark(buf, mark1)
@@ -31,9 +28,7 @@ def operator_marks(
 def set_visual_selection(
     nvim: Nvim, buf: Buffer, mark1: Tuple[int, int], mark2: Tuple[int, int]
 ) -> None:
-    """
-    (1, 1) indexed
-    """
+
 
     (row1, col1), (row2, col2) = mark1, mark2
     nvim.funcs.setpos("'<", (buf.number, row1, col1 + 1, 0))
@@ -47,11 +42,11 @@ def get_selected(nvim: Nvim, buf: Buffer, visual_type: VisualTypes) -> str:
     lines: Sequence[str] = nvim.api.buf_get_lines(buf, row1, row2 + 1, True)
 
     if len(lines) == 1:
-        return lines[0].encode()[col1 : col2 + 1].decode()
+        return lines[0][col1 : col2 + 1]
     else:
-        head = lines[0].encode()[col1:].decode()
+        head = lines[0][col1:]
         body = lines[1:-1]
-        tail = lines[-1].encode()[: col2 + 1].decode()
+        tail = lines[-1][: col2 + 1]
         return linesep.join((head, *body, tail))
 
 
