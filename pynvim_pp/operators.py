@@ -1,11 +1,10 @@
-from os import linesep
 from string import whitespace
 from typing import Iterable, Literal, Mapping, Tuple, TypeVar, Union
 
 from pynvim import Nvim
 from pynvim.api import Buffer
 
-from .api import buf_get_lines, buf_get_mark, buf_get_option, buf_set_mark, str_col_pos
+from .api import buf_get_mark, buf_get_option, buf_set_mark
 
 T = TypeVar("T")
 
@@ -32,22 +31,6 @@ def set_visual_selection(
     (row1, col1), (row2, col2) = mark1, mark2
     buf_set_mark(nvim, buf=buf, mark="<", row=row1, col=col1)
     buf_set_mark(nvim, buf=buf, mark=">", row=row2, col=col2)
-
-
-def get_selected(nvim: Nvim, buf: Buffer, visual_type: VisualTypes) -> str:
-    (row1, c1), (row2, c2) = operator_marks(nvim, buf=buf, visual_type=visual_type)
-    lines = buf_get_lines(nvim, buf=buf, lo=row1, hi=row2 + 1)
-
-    col1 = str_col_pos(nvim, buf=buf, row=row1, col=c1)
-    col2 = str_col_pos(nvim, buf=buf, row=row2, col=c2) + 1
-
-    if len(lines) == 1:
-        return lines[0][col1:col2]
-    else:
-        head = lines[0][col1:]
-        body = lines[1:-1]
-        tail = lines[-1][:col2]
-        return linesep.join((head, *body, tail))
 
 
 def p_indent(line: str, tabsize: int) -> int:
