@@ -39,7 +39,7 @@ def get_selected(nvim: Nvim, buf: Buffer, visual_type: VisualTypes) -> str:
     lines = buf_get_lines(nvim, buf=buf, lo=row1, hi=row2 + 1)
 
     col1 = str_col_pos(nvim, buf=buf, row=row1, col=c1)
-    col2 = str_col_pos(nvim, buf=buf, row=row1, col=c2)
+    col2 = str_col_pos(nvim, buf=buf, row=row2, col=c2)
 
     if len(lines) == 1:
         return lines[0][col1 : col2 + 1]
