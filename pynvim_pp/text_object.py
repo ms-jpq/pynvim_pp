@@ -8,17 +8,13 @@ def is_word(c: str, unifying_chars: FrozenSet[str]) -> bool:
 
 @dataclass(frozen=True)
 class SplitCtx:
-    lhs: str
-    rhs: str
     word_lhs: str
     word_rhs: str
     syms_lhs: str
     syms_rhs: str
 
 
-def gen_lhs_rhs(line: str, col: int, unifying_chars: FrozenSet[str]) -> SplitCtx:
-    lhs, rhs = line[:col], line[col:]
-
+def gen_split(lhs: str, rhs: str, unifying_chars: FrozenSet[str]) -> SplitCtx:
     word_lhs: MutableSequence[str] = []
     syms_lhs: MutableSequence[str] = []
     word_rhs: MutableSequence[str] = []
@@ -55,8 +51,6 @@ def gen_lhs_rhs(line: str, col: int, unifying_chars: FrozenSet[str]) -> SplitCtx
                 encountered_sym = True
 
     ctx = SplitCtx(
-        lhs=lhs,
-        rhs=rhs,
         word_lhs="".join(reversed(word_lhs)),
         word_rhs="".join(word_rhs),
         syms_lhs="".join(reversed(syms_lhs)),
