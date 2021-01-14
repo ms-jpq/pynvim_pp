@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import FrozenSet, MutableSequence
+from typing import AbstractSet, MutableSequence
 
 
-def is_word(c: str, unifying_chars: FrozenSet[str]) -> bool:
+def is_word(c: str, unifying_chars: AbstractSet[str]) -> bool:
     return c.isalnum() or c in unifying_chars
 
 
@@ -14,7 +14,7 @@ class SplitCtx:
     syms_rhs: str
 
 
-def gen_split(lhs: str, rhs: str, unifying_chars: FrozenSet[str]) -> SplitCtx:
+def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
     word_lhs: MutableSequence[str] = []
     syms_lhs: MutableSequence[str] = []
     word_rhs: MutableSequence[str] = []

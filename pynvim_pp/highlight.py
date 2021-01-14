@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import FrozenSet, Optional
+from typing import AbstractSet, Optional
 
 from .atomic import Atomic
 
@@ -7,7 +7,7 @@ from .atomic import Atomic
 @dataclass(frozen=True)
 class HLgroup:
     name: str
-    cterm: FrozenSet[str] = frozenset()
+    cterm: AbstractSet[str] = frozenset()
     ctermfg: Optional[str] = None
     ctermbg: Optional[str] = None
     guifg: Optional[str] = None
