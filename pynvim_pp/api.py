@@ -16,12 +16,12 @@ def cur_tab(nvim: Nvim) -> Tabpage:
     return tab
 
 
-def cur_window(nvim: Nvim) -> Window:
+def cur_win(nvim: Nvim) -> Window:
     win: Window = nvim.api.get_current_win()
     return win
 
 
-def set_cur_window(nvim: Nvim, win: Window) -> None:
+def set_cur_win(nvim: Nvim, win: Window) -> None:
     nvim.api.set_current_win(win)
 
 
@@ -35,7 +35,7 @@ def list_tabs(nvim: Nvim) -> Sequence[Tabpage]:
     return tabs
 
 
-def list_win(nvim: Nvim) -> Sequence[Window]:
+def list_wins(nvim: Nvim) -> Sequence[Window]:
     wins: Sequence[Window] = nvim.api.list_wins()
     return wins
 

@@ -7,8 +7,8 @@ from .api import (
     buf_set_lines,
     buf_set_option,
     cur_tab,
-    cur_window,
-    set_cur_window,
+    cur_win,
+    set_cur_win,
     tab_list_wins,
     win_get_buf,
     win_get_option,
@@ -30,11 +30,11 @@ def preview_windows_in_tab(
 def _open_preview(nvim: Nvim) -> Window:
     win = next(preview_windows_in_tab(nvim), None)
     if win:
-        set_cur_window(nvim, win=win)
+        set_cur_win(nvim, win=win)
         return win
     else:
         nvim.api.command("new")
-        win = cur_window(nvim)
+        win = cur_win(nvim)
         buf = win_get_buf(nvim, win=win)
         win_set_option(nvim, win=win, key="previewwindow", val=True)
         buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")

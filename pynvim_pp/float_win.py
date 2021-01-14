@@ -11,7 +11,7 @@ from .api import (
     buf_set_lines,
     buf_set_var,
     create_buf,
-    list_win,
+    list_wins,
     win_get_var,
     win_set_option,
     win_set_var,
@@ -31,7 +31,7 @@ class FloatWin:
 
 
 def list_floatwins(nvim: Nvim) -> Iterator[Window]:
-    for win in list_win(nvim):
+    for win in list_wins(nvim):
         flag: Optional[str] = win_get_var(nvim, win, FLOATWIN_VAR_NAME)
         if flag:
             yield win
