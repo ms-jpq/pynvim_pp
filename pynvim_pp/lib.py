@@ -2,6 +2,7 @@ from asyncio.events import get_running_loop
 from asyncio.tasks import create_task
 from concurrent.futures import Future
 from functools import partial
+from itertools import chain
 from os import linesep
 from typing import Any, Awaitable, Callable, TypeVar, cast
 
@@ -67,7 +68,7 @@ def write(
     error: bool = False,
 ) -> None:
     write = nvim.api.err_write if error else nvim.api.out_write
-    msg = sep.join(str(v) for v in (val, *vals)) + end
+    msg = sep.join(str(v) for v in chain((val,), vals)) + end
     write(msg)
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from inspect import currentframe
-from typing import Callable, Iterable, MutableMapping, Optional, TypeVar
+from typing import Callable, MutableMapping, Optional, Sequence, TypeVar
 from uuid import uuid4
 
 from .atomic import Atomic
@@ -22,8 +22,8 @@ def _name_gen() -> str:
 
 @dataclass(frozen=True)
 class _AuParams:
-    events: Iterable[str]
-    modifiers: Iterable[str]
+    events: Sequence[str]
+    modifiers: Sequence[str]
     rhs: str
 
 
@@ -31,8 +31,8 @@ class _A:
     def __init__(
         self,
         name: str,
-        events: Iterable[str],
-        modifiers: Iterable[str],
+        events: Sequence[str],
+        modifiers: Sequence[str],
         parent: AutoCMD,
     ) -> None:
         self._name, self._events, self._modifiers = name, events, modifiers
@@ -55,7 +55,7 @@ class AutoCMD:
         event: str,
         *events: str,
         name: Optional[str] = None,
-        modifiers: Iterable[str] = ("*",),
+        modifiers: Sequence[str] = ("*",),
     ) -> _A:
         c_name = name or self._name_gen()
         return _A(

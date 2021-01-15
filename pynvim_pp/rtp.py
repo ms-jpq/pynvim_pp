@@ -1,3 +1,4 @@
+from itertools import chain
 from locale import strxfrm
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -18,7 +19,7 @@ def _walk(path: Path) -> Iterator[Path]:
 def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
     atomic = Atomic()
     head, *tail = nvim.list_runtime_paths()
-    rtp = ",".join((head, *(map(str, plugins)), *tail))
+    rtp = ",".join(chain((head,), map(str, plugins), tail))
     atomic.command(f"set runtimepath={rtp}")
 
     for path in plugins:
