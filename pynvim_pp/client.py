@@ -8,7 +8,7 @@ from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
-from .logging import log, nvim_handler
+from .logging import log
 from .rpc import RpcCallable, nil_handler
 
 T = TypeVar("T")
@@ -80,6 +80,5 @@ def run_client(nvim: Nvim, client: Client) -> int:
             request_cb=on_rpc,
         )
 
-    log.addHandler(nvim_handler(nvim))
     Thread(target=forever, daemon=True).start()
     return main()
