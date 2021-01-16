@@ -8,8 +8,8 @@ from .atomic import Atomic
 class HLgroup:
     name: str
     cterm: AbstractSet[str] = frozenset()
-    ctermfg: Optional[str] = None
-    ctermbg: Optional[str] = None
+    ctermfg: Optional[int] = None
+    ctermbg: Optional[int] = None
     guifg: Optional[str] = None
     guibg: Optional[str] = None
 
