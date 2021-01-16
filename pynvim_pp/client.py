@@ -67,11 +67,7 @@ def run_client(nvim: Nvim, client: Client) -> int:
             log.exception(fmt, name, args, e)
 
     def main() -> int:
-        try:
-            return client.wait(nvim)
-        except Exception as e:
-            log.exception(e)
-            raise
+        return client.wait(nvim)
 
     def forever() -> None:
         nvim.run_loop(
