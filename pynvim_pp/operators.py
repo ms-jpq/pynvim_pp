@@ -1,12 +1,10 @@
 from string import whitespace
-from typing import Iterable, Literal, Mapping, Tuple, TypeVar, Union
+from typing import Literal, Tuple, Union
 
 from pynvim import Nvim
 from pynvim.api import Buffer
 
 from .api import buf_get_mark, buf_get_option, buf_set_mark
-
-T = TypeVar("T")
 
 VisualTypes = Union[Literal["char"], Literal["line"], Literal["block"], None]
 
@@ -40,11 +38,3 @@ def p_indent(line: str, tabsize: int) -> int:
             return idx - 1
     else:
         return 0
-
-
-def escape(stream: Iterable[T], escape: Mapping[T, T]) -> Iterable[T]:
-    for unit in stream:
-        if unit in escape:
-            yield escape[unit]
-        else:
-            yield unit
