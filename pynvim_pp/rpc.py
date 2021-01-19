@@ -97,7 +97,7 @@ class RPC:
         specs: MutableSequence[RpcSpec] = []
         while self._handlers:
             name, handler = self._handlers.popitem()
-            atomic.exec(_new_lua_func(chan, handler=handler), ())
+            atomic.exec(_new_lua_func(chan, handler=handler), False)
             atomic.exec(_new_viml_func(handler=handler), False)
             specs.append((name, handler))
 
