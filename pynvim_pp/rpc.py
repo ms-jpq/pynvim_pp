@@ -55,7 +55,7 @@ RpcSpec = Tuple[str, RpcCallable[T]]
 
 def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
-    invoke = f"return vim.api.call_function('{op}', {{{chan}, '{handler.name}', {{...}}}})"
+    invoke = f"return vim.api.nvim_call_function('{op}', {{{chan}, '{handler.name}', {{...}}}})"
     body = f"lua {handler.name} = function (...) {invoke} end"
     return body
 
@@ -95,6 +95,7 @@ class RPC:
         specs: MutableSequence[RpcSpec] = []
         while self._handlers:
             name, handler = self._handlers.popitem()
+            print(_new_lua_func(chan, handler=handler), flush=True)
             atomic.command(_new_lua_func(chan, handler=handler))
             atomic.command(_new_viml_func(handler=handler))
             specs.append((name, handler))
