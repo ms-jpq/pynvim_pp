@@ -112,7 +112,8 @@ def win_close(nvim: Nvim, win: Window) -> None:
 
 
 def buf_close(nvim: Nvim, buf: Buffer) -> None:
-    nvim.api.buf_delete(buf, {"force": True})
+    # nvim.api.buf_delete(buf, {"force": True})
+    nvim.command(f"bwipeout! {buf.number}")
 
 
 def win_get_cursor(nvim: Nvim, win: Window) -> Tuple[int, int]:
