@@ -54,8 +54,8 @@ RpcSpec = Tuple[str, RpcCallable[T]]
 
 
 def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
-    op = "request" if handler.is_blocking else "notify"
-    invoke = f"return vim.rpc{op}({chan}, '{handler.name}', {{...}})"
+    op = "rpcrequest" if handler.is_blocking else "rpcnotify"
+    invoke = f"return vim.api.call_function('{op}', {{{chan}, '{handler.name}', {{...}}}})"
     body = f"lua {handler.name} = function (...) {invoke} end"
     return body
 
