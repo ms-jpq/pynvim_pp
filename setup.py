@@ -12,7 +12,7 @@ package_data = {pkg: ("py.typed",) for pkg in packages}
 
 setup(
     name="pynvim2",
-    version=".".join(map(str, __version__)),
+    version=__version__,
     python_requires=">=3.7.0",
     install_requires=("pynvim",),
     description="Pynvim++",

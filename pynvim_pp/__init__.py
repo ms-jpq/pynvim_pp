@@ -9,4 +9,4 @@ from .rpc import RPC, RpcCallable, RpcMsg
 from .settings import Settings
 
 
-__version__ = (0, 1, 10)
+__version__ = "0.1.10"
