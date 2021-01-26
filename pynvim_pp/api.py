@@ -193,9 +193,9 @@ def ask_mc(
         return answer_key.get(resp)
 
 
-def ask(nvim: Nvim, question: str) -> Optional[str]:
+def ask(nvim: Nvim, question: str, default: str) -> Optional[str]:
     try:
-        resp: Optional[str] = nvim.funcs.input(question)
+        resp: Optional[str] = nvim.funcs.input(question, default)
     except NvimError:
         return None
     else:
