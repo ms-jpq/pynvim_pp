@@ -184,7 +184,7 @@ def ask_mc(
     nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, T]
 ) -> Optional[T]:
     try:
-        resp: Optional[int] = nvim.funcs.confirm(question, answers)
+        resp: Optional[int] = nvim.funcs.confirm(question, answers, 0)
     except NvimError:
         resp = None
     if resp is None:
