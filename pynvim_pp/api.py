@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Tuple, TypeVar, Union
+from typing import Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
@@ -178,3 +178,25 @@ def create_buf(
     if nofile:
         buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     return buf
+
+
+def ask_mc(
+    nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, T]
+) -> Optional[T]:
+    try:
+        resp: Optional[int] = nvim.funcs.confirm(question, answers)
+    except NvimError:
+        resp = None
+    if resp is None:
+        return None
+    else:
+        return answer_key.get(resp)
+
+
+def ask(nvim: Nvim, question: str) -> Optional[str]:
+    try:
+        resp: Optional[str] = nvim.funcs.input(question)
+    except NvimError:
+        return None
+    else:
+        return resp
