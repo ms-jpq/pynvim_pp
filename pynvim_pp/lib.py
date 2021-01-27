@@ -3,11 +3,11 @@ from asyncio.tasks import create_task
 from concurrent.futures import Future
 from functools import partial
 from itertools import chain
-from os import linesep
 from typing import Any, Awaitable, Callable, TypeVar, cast
 
 from pynvim import Nvim
 
+from .consts import linesep
 from .logging import log
 
 T = TypeVar("T")

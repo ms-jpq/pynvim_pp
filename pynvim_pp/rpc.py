@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from asyncio.coroutines import iscoroutinefunction
-from os import linesep
 from typing import (
     Any,
     Awaitable,
@@ -20,6 +19,7 @@ from typing import (
 from pynvim import Nvim
 
 from .atomic import Atomic
+from .consts import linesep
 from .logging import log
 
 T = TypeVar("T")

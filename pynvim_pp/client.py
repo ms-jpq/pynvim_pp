@@ -1,13 +1,13 @@
 from abc import abstractmethod
 from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
-from os import linesep
 from queue import SimpleQueue
 from threading import Thread
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
+from .consts import linesep
 from .logging import log
 from .rpc import RpcCallable, nil_handler
 
