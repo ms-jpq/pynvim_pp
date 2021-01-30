@@ -8,6 +8,8 @@ def is_word(c: str, unifying_chars: AbstractSet[str]) -> bool:
 
 @dataclass(frozen=True)
 class SplitCtx:
+    lhs: str
+    rhs: str
     word_lhs: str
     word_rhs: str
     syms_lhs: str
@@ -51,6 +53,8 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
                 encountered_sym = True
 
     ctx = SplitCtx(
+        lhs=lhs,
+        rhs=rhs,
         word_lhs="".join(reversed(word_lhs)),
         word_rhs="".join(word_rhs),
         syms_lhs="".join(reversed(syms_lhs)),
