@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from itertools import repeat
 from math import floor
-from typing import Iterator, Optional, Tuple
+from typing import Iterator, Optional
 from uuid import uuid4
 
 from pynvim import Nvim
 from pynvim.api import Buffer, Window
 
 from .api import (
+    NvimPos,
     buf_set_lines,
     buf_set_var,
     create_buf,
@@ -42,7 +43,7 @@ def _open_float_win(
     buf: Buffer,
     width: int,
     height: int,
-    pos: Tuple[int, int],
+    pos: NvimPos,
     focusable: bool,
 ) -> Window:
     row, col = pos

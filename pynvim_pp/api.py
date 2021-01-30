@@ -4,6 +4,7 @@ from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
 T = TypeVar("T")
+NvimPos = Tuple[int, int]
 
 
 def get_cwd(nvim: Nvim) -> str:
@@ -116,7 +117,7 @@ def buf_close(nvim: Nvim, buf: Buffer) -> None:
     nvim.command(f"bwipeout! {buf.number}")
 
 
-def win_get_cursor(nvim: Nvim, win: Window) -> Tuple[int, int]:
+def win_get_cursor(nvim: Nvim, win: Window) -> NvimPos:
     """
     col is byte indexed
     """
@@ -159,7 +160,7 @@ def buf_set_lines(
     nvim.api.buf_set_lines(buf, lo, hi, True, lines)
 
 
-def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> Tuple[int, int]:
+def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> NvimPos:
     row, col = nvim.api.buf_get_mark(buf, mark)
     return row - 1, col
 
