@@ -70,7 +70,9 @@ def _border_buf(nvim: Nvim, width: int, height: int) -> Buffer:
     btm = "╰" + ("─" * (width - 2)) + "╯"
     lines = tuple((top, *repeat(mid, times=height - 2), btm))
 
-    buf = create_buf(nvim, listed=False, scratch=True, wipe=True, nofile=True)
+    buf = create_buf(
+        nvim, listed=False, scratch=True, wipe=True, nofile=True, noswap=True
+    )
     buf_set_var(nvim, buf=buf, key=FLOATWIN_BORDER_BUF_VAR_NAME, val=True)
     buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=lines)
     return buf
