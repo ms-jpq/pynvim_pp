@@ -170,13 +170,15 @@ def buf_set_mark(nvim: Nvim, buf: Buffer, mark: str, row: int, col: int) -> None
 
 
 def create_buf(
-    nvim: Nvim, listed: bool, scratch: bool, wipe: bool, nofile: bool
+    nvim: Nvim, listed: bool, scratch: bool, wipe: bool, nofile: bool, noswap: bool
 ) -> Buffer:
     buf: Buffer = nvim.api.create_buf(listed, scratch)
     if wipe:
         buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
     if nofile:
         buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
+    if noswap:
+        buf_set_option(nvim, buf=buf, key="swapfile", val=False)
     return buf
 
 
