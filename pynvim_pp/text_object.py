@@ -52,12 +52,14 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
                 syms_rhs.append(char)
                 encountered_sym = True
 
+    w_lhs, w_rhs = "".join(reversed(word_lhs)), "".join(word_rhs)
+
     ctx = SplitCtx(
         lhs=lhs,
         rhs=rhs,
-        word_lhs="".join(reversed(word_lhs)),
-        word_rhs="".join(word_rhs),
-        syms_lhs="".join(reversed(syms_lhs)),
-        syms_rhs="".join(syms_rhs),
+        word_lhs=w_lhs,
+        word_rhs=w_rhs,
+        syms_lhs="".join(reversed(syms_lhs)) + w_lhs,
+        syms_rhs=w_rhs + "".join(syms_rhs),
     )
     return ctx
