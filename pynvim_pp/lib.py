@@ -1,9 +1,11 @@
 from asyncio.events import get_running_loop
 from asyncio.tasks import create_task
 from concurrent.futures import Future
+from contextlib import contextmanager
 from functools import partial
 from itertools import chain
-from typing import Any, Awaitable, Callable, TypeVar, cast
+from time import monotonic
+from typing import Any, Awaitable, Callable, Iterator, TypeVar, cast
 
 from pynvim import Nvim
 
@@ -82,3 +84,11 @@ def awrite(
 ) -> Awaitable[None]:
     p = partial(write, nvim, val, *vals, sep=sep, end=end, error=error)
     return go(async_call(nvim, p))
+
+
+@contextmanager
+def bench(nvim: Nvim, *args: Any) -> Iterator[None]:
+    t1 = monotonic()
+    yield None
+    t2 = monotonic()
+    write(nvim, *args, t2 - t1)
