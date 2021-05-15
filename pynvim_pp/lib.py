@@ -87,8 +87,12 @@ def awrite(
 
 
 @contextmanager
-def bench(nvim: Nvim, *args: Any) -> Iterator[None]:
+def bench(
+    nvim: Nvim, *args: Any, threshhold: float = 0.01, precision: int = 3
+) -> Iterator[None]:
     t1 = monotonic()
     yield None
     t2 = monotonic()
-    write(nvim, *args, t2 - t1)
+    elapsed = t2 - t1
+    if elapsed >= threshhold:
+        write(nvim, *args, round(elapsed, precision))
