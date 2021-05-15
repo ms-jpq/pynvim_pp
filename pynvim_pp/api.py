@@ -1,4 +1,4 @@
-from typing import Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Iterator, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
@@ -41,9 +41,20 @@ def list_wins(nvim: Nvim) -> Sequence[Window]:
     return wins
 
 
-def list_bufs(nvim: Nvim) -> Sequence[Buffer]:
+def list_bufs(nvim: Nvim, listed: bool) -> Sequence[Buffer]:
     bufs: Sequence[Buffer] = nvim.api.list_bufs()
-    return bufs
+    if listed:
+
+        def cont() -> Iterator[int]:
+            raw: str = nvim.funcs.execute((":buffers",))
+            for line in raw.strip().splitlines():
+                num, _, _ = line.lstrip().partition(" ")
+                yield int(num)
+
+        listed_nrs = {*cont()}
+        return tuple(buf for buf in bufs if buf.number in listed_nrs)
+    else:
+        return bufs
 
 
 def tab_list_wins(nvim: Nvim, tab: Tabpage) -> Sequence[Window]:
