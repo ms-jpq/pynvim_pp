@@ -45,10 +45,15 @@ def list_bufs(nvim: Nvim, listed: bool) -> Sequence[Buffer]:
     bufs: Sequence[Buffer] = nvim.api.list_bufs()
     if listed:
 
+        def parse(line: str) -> Iterator[str]:
+            for char in line.lstrip():
+                if char.isdigit():
+                    yield char
+
         def cont() -> Iterator[int]:
             raw: str = nvim.funcs.execute((":buffers",))
             for line in raw.strip().splitlines():
-                num, _, _ = line.lstrip().partition(" ")
+                num = "".join(parse(line))
                 yield int(num)
 
         listed_nrs = {*cont()}
