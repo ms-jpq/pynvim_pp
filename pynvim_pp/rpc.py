@@ -62,7 +62,7 @@ def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
 
 def _new_viml_func(handler: RpcCallable[T]) -> str:
     head = f"function! {handler.name}(...)"
-    body = f"  call luaeval('{handler.name}(...)', [a:000])"
+    body = f"  return luaeval('{handler.name}(...)', [a:000])"
     tail = f"endfunction"
     return linesep.join((head, body, tail))
 
