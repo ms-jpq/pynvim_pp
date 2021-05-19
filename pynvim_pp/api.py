@@ -12,6 +12,15 @@ def get_cwd(nvim: Nvim) -> str:
     return cwd
 
 
+def get_option(nvim: Nvim, key: str) -> T:
+    val: T = nvim.api.get_option(key)
+    return val
+
+
+def set_option(nvim: Nvim, key: str, val: T) -> None:
+    nvim.api.set_option(key, val)
+
+
 def cur_tab(nvim: Nvim) -> Tabpage:
     tab: Tabpage = nvim.api.get_current_tabpage()
     return tab
