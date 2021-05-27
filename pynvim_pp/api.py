@@ -58,6 +58,8 @@ def list_bufs(nvim: Nvim, listed: bool) -> Sequence[Buffer]:
             for char in line.lstrip():
                 if char.isdigit():
                     yield char
+                else:
+                    break
 
         def cont() -> Iterator[int]:
             raw: str = nvim.funcs.execute((":buffers",))
