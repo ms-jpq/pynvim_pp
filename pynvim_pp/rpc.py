@@ -24,7 +24,7 @@ from .logging import log
 
 T = TypeVar("T")
 
-RpcMsg = Tuple[str, Sequence[Any]]
+RpcMsg = Tuple[str, Sequence[Sequence[Any]]]
 
 
 class RpcCallable(Generic[T]):

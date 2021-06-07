@@ -32,7 +32,7 @@ class BasicClient(Client):
         self._q: SimpleQueue = SimpleQueue()
 
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
-        name, args = msg
+        name, (args, *_) = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
@@ -58,8 +58,7 @@ class BasicClient(Client):
 
 
 def run_client(nvim: Nvim, client: Client) -> int:
-    def on_rpc(name: str, evt_args: Sequence[Sequence[Any]]) -> Any:
-        args, *_ = evt_args
+    def on_rpc(name: str, args: Sequence[Sequence[Any]]) -> Any:
         try:
             return client.on_msg(nvim, (name, args))
         except Exception as e:
