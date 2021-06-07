@@ -1,10 +1,17 @@
 from typing import Iterator, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
+from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
 T = TypeVar("T")
 NvimPos = Tuple[int, int]
+
+
+def new_buf(nvim: Nvim, nr: int) -> Buffer:
+    ext_id = nvim.metadata["types"]["Buffer"]["id"]
+    buf = Buffer(nvim, (ext_id, packb(nr)))
+    return buf
 
 
 def get_cwd(nvim: Nvim) -> str:
