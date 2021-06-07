@@ -58,7 +58,6 @@ def list_wins(nvim: Nvim) -> Sequence[Window]:
 
 
 def list_bufs(nvim: Nvim, listed: bool) -> Sequence[Buffer]:
-    bufs: Sequence[Buffer] = nvim.api.list_bufs()
     if listed:
 
         def parse(line: str) -> Iterator[str]:
@@ -68,15 +67,15 @@ def list_bufs(nvim: Nvim, listed: bool) -> Sequence[Buffer]:
                 else:
                     break
 
-        def cont() -> Iterator[int]:
+        def cont() -> Iterator[Buffer]:
             raw: str = nvim.funcs.execute((":buffers",))
             for line in raw.strip().splitlines():
                 num = "".join(parse(line))
-                yield int(num)
+                yield new_buf(nvim, nr=int(num))
 
-        listed_nrs = {*cont()}
-        return tuple(buf for buf in bufs if buf.number in listed_nrs)
+        return tuple(cont())
     else:
+        bufs: Sequence[Buffer] = nvim.api.list_bufs()
         return bufs
 
 
