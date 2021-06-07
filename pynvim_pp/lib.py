@@ -51,10 +51,10 @@ async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any
         try:
             ret = fn(*args, **kwargs)
         except Exception as e:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_exception(e)
         else:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_result(ret)
 
     nvim.async_call(cont)
