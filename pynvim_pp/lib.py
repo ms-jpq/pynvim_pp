@@ -1,7 +1,7 @@
 from asyncio.events import get_running_loop
 from asyncio.tasks import create_task
-from concurrent.futures import Future
-from contextlib import contextmanager
+from concurrent.futures import Future, InvalidStateError
+from contextlib import contextmanager, suppress
 from functools import partial
 from itertools import chain
 from time import monotonic
@@ -33,10 +33,10 @@ def threadsafe_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any)
         try:
             ret = fn(*args, **kwargs)
         except Exception as e:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_exception(e)
         else:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_result(ret)
 
     nvim.async_call(cont)
@@ -51,10 +51,10 @@ async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any
         try:
             ret = fn(*args, **kwargs)
         except Exception as e:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_exception(e)
         else:
-            if not fut.cancelled():
+            with suppress(InvalidStateError):
                 fut.set_result(ret)
 
     nvim.async_call(cont)
