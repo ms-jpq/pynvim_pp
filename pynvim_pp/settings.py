@@ -36,14 +36,14 @@ class Settings:
     def __setitem__(
         self, key: str, val: Union[_Setting, str, int, bool, Sequence[str]]
     ) -> None:
-        if type(val) is _Setting:
+        if isinstance(val, _Setting):
             pass
-        elif type(val) is int:
-            self._conf[key] = (_OP.equals, str(val))
-        elif type(val) is str:
-            self._conf[key] = (_OP.equals, cast(str, val))
-        elif type(val) is bool:
+        elif isinstance(val, bool):
             self._conf[key] = (_OP.exact, "")
+        elif isinstance(val, int):
+            self._conf[key] = (_OP.equals, str(val))
+        elif isinstance(val, str):
+            self._conf[key] = (_OP.equals, val)
         elif isinstance(val, Sequence):
             self._conf[key] = (_OP.equals, ",".join(val))
         else:
