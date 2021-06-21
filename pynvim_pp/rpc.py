@@ -62,7 +62,7 @@ def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
       end
     end)()
     """
-    return dedent(lua)
+    return dedent(lua).lstrip()
 
 
 def _new_viml_func(handler: RpcCallable[Any]) -> str:
@@ -71,7 +71,7 @@ def _new_viml_func(handler: RpcCallable[Any]) -> str:
       return luaeval('{handler.name}(...)', [a:000])
     endfunction
     """
-    return dedent(viml)
+    return dedent(viml).lstrip()
 
 
 def _name_gen(fn: Callable[..., Any]) -> str:
@@ -104,7 +104,7 @@ class RPC:
         specs: MutableSequence[RpcSpec] = []
         while self._handlers:
             name, handler = self._handlers.popitem()
-            atomic.call_function(_new_lua_func(chan, handler=handler), ())
+            atomic.call_function("luaeval", (_new_lua_func(chan, handler=handler), ()))
             atomic.command(_new_viml_func(handler=handler))
             specs.append((name, handler))
 
