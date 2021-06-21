@@ -50,29 +50,31 @@ class RpcCallable(Generic[T]):
             return cast(T, self._handler(nvim, *args, **kwargs))
 
 
-RpcSpec = Tuple[str, RpcCallable[T]]
+RpcSpec = Tuple[str, RpcCallable[Any]]
 
 
-def _new_lua_func(chan: int, handler: RpcCallable[T]) -> str:
+def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
     invoke = f"return vim.api.nvim_call_function('{op}', {{{chan}, '{handler.name}', {{...}}}})"
-    body = f"lua {handler.name} = function (...) {invoke} end"
+    body = f"{handler.name} = function (...) {invoke} end"
     return body
 
 
-def _new_viml_func(handler: RpcCallable[T]) -> str:
+def _new_viml_func(handler: RpcCallable[Any]) -> str:
     head = f"function! {handler.name}(...)"
     body = f"  return luaeval('{handler.name}(...)', [a:000])"
     tail = f"endfunction"
     return linesep.join((head, body, tail))
 
 
-def _name_gen(fn: Callable[..., T]) -> str:
+def _name_gen(fn: Callable[..., Any]) -> str:
     return f"{fn.__module__}.{fn.__qualname__}".replace(".", "_").capitalize()
 
 
 class RPC:
-    def __init__(self, name_gen: Callable[[Callable[..., T]], str] = _name_gen) -> None:
+    def __init__(
+        self, name_gen: Callable[[Callable[..., Any]], str] = _name_gen
+    ) -> None:
         self._handlers: MutableMapping[str, RpcCallable[Any]] = {}
         self._name_gen = name_gen
 
@@ -95,7 +97,7 @@ class RPC:
         specs: MutableSequence[RpcSpec] = []
         while self._handlers:
             name, handler = self._handlers.popitem()
-            atomic.command(_new_lua_func(chan, handler=handler))
+            atomic.nvim_call_function(_new_lua_func(chan, handler=handler), ())
             atomic.command(_new_viml_func(handler=handler))
             specs.append((name, handler))
 
@@ -107,3 +109,4 @@ def nil_handler(name: str) -> RpcCallable:
         log.warn("MISSING RPC HANDLER FOR: %s - %s - %s", name, args, kwargs)
 
     return RpcCallable(name=name, blocking=True, handler=handler)
+
