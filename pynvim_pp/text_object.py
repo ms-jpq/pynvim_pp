@@ -25,7 +25,9 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
     encountered_sym = False
     for char in reversed(lhs):
         is_w = is_word(char, unifying_chars=unifying_chars)
-        if encountered_sym:
+        if char.isspace():
+            break
+        elif encountered_sym:
             if is_w:
                 break
             else:
@@ -40,7 +42,9 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
     encountered_sym = False
     for char in rhs:
         is_w = is_word(char, unifying_chars=unifying_chars)
-        if encountered_sym:
+        if char.isspace():
+            break
+        elif encountered_sym:
             if is_w:
                 break
             else:
@@ -63,3 +67,4 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
         syms_rhs=w_rhs + "".join(syms_rhs),
     )
     return ctx
+

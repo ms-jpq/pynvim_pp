@@ -1,10 +1,9 @@
-from typing import Iterator, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Iterator, Literal, Mapping, Optional, Sequence, Tuple, Union
 
 from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
-T = TypeVar("T")
 NvimPos = Tuple[int, int]
 
 
@@ -19,12 +18,12 @@ def get_cwd(nvim: Nvim) -> str:
     return cwd
 
 
-def get_option(nvim: Nvim, key: str) -> T:
-    val: T = nvim.api.get_option(key)
+def get_option(nvim: Nvim, key: str) -> Any:
+    val = nvim.api.get_option(key)
     return val
 
 
-def set_option(nvim: Nvim, key: str, val: T) -> None:
+def set_option(nvim: Nvim, key: str, val: Union[str, int, bool]) -> None:
     nvim.api.set_option(key, val)
 
 
@@ -93,8 +92,8 @@ def win_set_buf(nvim: Nvim, win: Window, buf: Buffer) -> None:
     nvim.api.win_set_buf(win, buf)
 
 
-def win_get_option(nvim: Nvim, win: Window, key: str) -> T:
-    opt: T = nvim.api.win_get_option(win, key)
+def win_get_option(nvim: Nvim, win: Window, key: str) -> Any:
+    opt = nvim.api.win_get_option(win, key)
     return opt
 
 
@@ -104,8 +103,8 @@ def win_set_option(
     nvim.api.win_set_option(win, key, val)
 
 
-def buf_get_option(nvim: Nvim, buf: Buffer, key: str) -> T:
-    opt: T = nvim.api.buf_get_option(buf, key)
+def buf_get_option(nvim: Nvim, buf: Buffer, key: str) -> Any:
+    opt = nvim.api.buf_get_option(buf, key)
     return opt
 
 
@@ -115,29 +114,29 @@ def buf_set_option(
     nvim.api.buf_set_option(buf, key, val)
 
 
-def win_get_var(nvim: Nvim, win: Window, key: str) -> Optional[T]:
+def win_get_var(nvim: Nvim, win: Window, key: str) -> Optional[Any]:
     try:
-        opt: T = nvim.api.win_get_var(win, key)
+        opt = nvim.api.win_get_var(win, key)
     except NvimError:
         return None
     else:
         return opt
 
 
-def win_set_var(nvim: Nvim, win: Window, key: str, val: Union[str, int, bool]) -> None:
+def win_set_var(nvim: Nvim, win: Window, key: str, val: Any) -> None:
     nvim.api.win_set_var(win, key, val)
 
 
-def buf_get_var(nvim: Nvim, buf: Buffer, key: str) -> Optional[T]:
+def buf_get_var(nvim: Nvim, buf: Buffer, key: str) -> Optional[Any]:
     try:
-        opt: T = nvim.api.buf_get_var(buf, key)
+        opt = nvim.api.buf_get_var(buf, key)
     except NvimError:
         return None
     else:
         return opt
 
 
-def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Union[str, int, bool]) -> None:
+def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Any) -> None:
     nvim.api.buf_set_var(buf, key, val)
 
 
@@ -182,6 +181,18 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
     return filetype
 
 
+def buf_linefeed(nvim: Nvim, buf: Buffer) -> Literal["\r\n", "\n", "\r"]:
+    lf: Literal["dos", "unix", "mac"] = buf_get_option(nvim, buf=buf, key="fileformat")
+    if lf == "dos":
+        return "\r\n"
+    elif lf == "unix":
+        return "\n"
+    elif lf == "mac":
+        return "\n"
+    else:
+        assert False
+
+
 def buf_get_lines(nvim: Nvim, buf: Buffer, lo: int, hi: int) -> Sequence[str]:
     lines: Sequence[str] = nvim.api.buf_get_lines(buf, lo, hi, True)
     return lines
@@ -217,8 +228,8 @@ def create_buf(
 
 
 def ask_mc(
-    nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, T]
-) -> Optional[T]:
+    nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, Any]
+) -> Optional[Any]:
     try:
         resp: Optional[int] = nvim.funcs.confirm(question, answers, 0)
     except NvimError:

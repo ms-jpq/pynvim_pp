@@ -29,3 +29,12 @@ def highlight(*groups: HLgroup) -> Atomic:
         atomic.command(hl_line)
 
     return atomic
+
+
+def hl_link(**links: str) -> Atomic:
+    atomic = Atomic()
+    for src, dest in links.items():
+        link = f"highlight link {src} {dest}"
+        atomic.command(link)
+    return atomic
+
