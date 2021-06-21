@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from asyncio.coroutines import iscoroutinefunction
+from textwrap import dedent
 from typing import (
     Any,
     Awaitable,
@@ -19,7 +20,6 @@ from typing import (
 from pynvim import Nvim
 
 from .atomic import Atomic
-from .consts import linesep
 from .logging import log
 
 T = TypeVar("T")
@@ -55,16 +55,23 @@ RpcSpec = Tuple[str, RpcCallable[Any]]
 
 def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
-    invoke = f"return vim.api.nvim_call_function('{op}', {{{chan}, '{handler.name}', {{...}}}})"
-    body = f"{handler.name} = function (...) {invoke} end"
-    return body
+    lua = f"""
+    (function()
+      {handler.name} = function(...)
+        return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
+      end
+    end)()
+    """
+    return dedent(lua)
 
 
 def _new_viml_func(handler: RpcCallable[Any]) -> str:
-    head = f"function! {handler.name}(...)"
-    body = f"  return luaeval('{handler.name}(...)', [a:000])"
-    tail = f"endfunction"
-    return linesep.join((head, body, tail))
+    viml = f"""
+    function! {handler.name}(...)
+      return luaeval('{handler.name}(...)', [a:000])
+    endfunction
+    """
+    return dedent(viml)
 
 
 def _name_gen(fn: Callable[..., Any]) -> str:
