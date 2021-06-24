@@ -43,11 +43,17 @@ def _open_preview(nvim: Nvim) -> Window:
         return win
 
 
-def set_preview(nvim: Nvim, preview: str) -> Buffer:
-    win = _open_preview(nvim)
-    buf = win_get_buf(nvim, win=win)
+def set_preview_buf(nvim: Nvim, buf: Buffer, filetype: str, preview: str) -> None:
     buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     buf_set_option(nvim, buf=buf, key="modifiable", val=True)
     buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview.splitlines())
     buf_set_option(nvim, buf=buf, key="modifiable", val=False)
+    buf_set_option(nvim, buf=buf, key="filetype", val=filetype)
+
+
+def set_preview(nvim: Nvim, filetype: str, preview: str) -> Buffer:
+    win = _open_preview(nvim)
+    buf = win_get_buf(nvim, win=win)
+    set_preview_buf(nvim, buf=buf, filetype=filetype, preview=preview)
     return buf
+
