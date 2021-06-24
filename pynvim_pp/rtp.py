@@ -18,8 +18,8 @@ def _walk(path: Path) -> Iterator[Path]:
 
 def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
     atomic = Atomic()
-    head, *tail = nvim.list_runtime_paths()
-    rtp = ",".join(chain((head,), map(str, plugins), tail))
+    head, *body, tail = nvim.list_runtime_paths()
+    rtp = ",".join(chain((head,), body, map(str, plugins), (tail,)))
     atomic.set_option("runtimepath", rtp)
 
     for path in plugins:
