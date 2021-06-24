@@ -12,7 +12,7 @@ def _walk(path: Path) -> Iterator[Path]:
     for p in path.iterdir():
         if p.is_dir():
             yield from _walk(p)
-        elif p.is_file():
+        else:
             yield p
 
 
@@ -25,7 +25,7 @@ def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
     for path in plugins:
         plug = path / "plugin"
         if plug.exists():
-            scripts = (str(s) for s in _walk(plug) if s.suffix == ".vim")
+            scripts = (str(s) for s in _walk(plug) if s.suffix in {".lua", ".vim"})
             for script in sorted(scripts, key=strxfrm):
                 atomic.command(f"source {script}")
 
