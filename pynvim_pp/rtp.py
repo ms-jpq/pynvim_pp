@@ -20,7 +20,7 @@ def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
     atomic = Atomic()
     head, *tail = nvim.list_runtime_paths()
     rtp = ",".join(chain((head,), map(str, plugins), tail))
-    atomic.command(f"set runtimepath={rtp}")
+    atomic.set_option("runtimepath", rtp)
 
     for path in plugins:
         plug = path / "plugin"
@@ -30,3 +30,4 @@ def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
                 atomic.command(f"source {script}")
 
     return atomic
+
