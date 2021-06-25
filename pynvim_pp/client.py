@@ -11,11 +11,18 @@ from pynvim import Nvim
 
 from .consts import linesep
 from .logging import log
-from .rpc import RpcCallable, nil_handler
+from .rpc import RpcCallable, RpcMsg, nil_handler
+
+try:
+    from signal import SIGKILL
+except ImportError:
+    from signal import SIGTERM
+
+    SIGDED = SIGTERM
+else:
+    SIGDED = SIGKILL
 
 T = TypeVar("T")
-
-from .rpc import RpcMsg
 
 
 class Client(Protocol):
@@ -60,12 +67,7 @@ class BasicClient(Client):
 
 
 def _exit() -> None:
-    try:
-        from signal import SIGKILL
-    except ImportError:
-        pass
-    else:
-        kill(getpid(), SIGKILL)
+    kill(getpid(), SIGDED)
 
 
 def run_client(nvim: Nvim, client: Client) -> int:
@@ -87,9 +89,10 @@ def run_client(nvim: Nvim, client: Client) -> int:
         )
 
     def forever2() -> None:
+        ppid = getppid()
         while True:
             sleep(1)
-            if getppid() == 1:
+            if getppid() != ppid:
                 _exit()
 
     Thread(target=forever1, daemon=True).start()
