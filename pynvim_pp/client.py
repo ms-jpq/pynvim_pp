@@ -1,8 +1,11 @@
 from abc import abstractmethod
 from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
+from os import getpid, getppid, kill
 from queue import SimpleQueue
+from signal import SIGKILL
 from threading import Thread
+from time import sleep
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
@@ -57,6 +60,10 @@ class BasicClient(Client):
         return fut.result()
 
 
+def _exit() -> None:
+    kill(getpid(), SIGKILL)
+
+
 def run_client(nvim: Nvim, client: Client) -> int:
     def on_rpc(name: str, args: Sequence[Sequence[Any]]) -> Any:
         try:
@@ -68,12 +75,20 @@ def run_client(nvim: Nvim, client: Client) -> int:
     def main() -> int:
         return client.wait(nvim)
 
-    def forever() -> None:
+    def forever1() -> None:
         nvim.run_loop(
             err_cb=lambda err: log.error("%s", err),
             notification_cb=on_rpc,
             request_cb=on_rpc,
         )
 
-    Thread(target=forever, daemon=True).start()
+    def forever2() -> None:
+        while True:
+            sleep(1)
+            if getppid() == 1:
+                _exit()
+
+    Thread(target=forever1, daemon=True).start()
+    Thread(target=forever2, daemon=True).start()
     return main()
+
