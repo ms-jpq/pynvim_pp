@@ -3,7 +3,6 @@ from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
 from os import getpid, getppid, kill
 from queue import SimpleQueue
-from signal import SIGKILL
 from threading import Thread
 from time import sleep
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
@@ -61,7 +60,12 @@ class BasicClient(Client):
 
 
 def _exit() -> None:
-    kill(getpid(), SIGKILL)
+    try:
+        from signal import SIGKILL
+    except ImportError:
+        pass
+    else:
+        kill(getpid(), SIGKILL)
 
 
 def run_client(nvim: Nvim, client: Client) -> int:
