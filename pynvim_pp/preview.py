@@ -50,7 +50,7 @@ def buf_set_preview(
     buf_set_option(nvim, buf=buf, key="modifiable", val=True)
     buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview)
     buf_set_option(nvim, buf=buf, key="modifiable", val=False)
-    buf_set_option(nvim, buf=buf, key="filetype", val=filetype)
+    buf_set_option(nvim, buf=buf, key="syntax", val=filetype)
 
 
 def set_preview(nvim: Nvim, filetype: str, preview: str) -> Buffer:
