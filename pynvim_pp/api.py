@@ -1,4 +1,15 @@
-from typing import Any, Iterator, Literal, Mapping, Optional, Sequence, Tuple, Union
+from enum import Enum
+from typing import (
+    Any,
+    Iterator,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
@@ -181,16 +192,15 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
     return filetype
 
 
+class LFfmt(Enum):
+    dos = "\r\n"
+    unix = "\n"
+    mac = "\r"
+
+
 def buf_linefeed(nvim: Nvim, buf: Buffer) -> Literal["\r\n", "\n", "\r"]:
     lf: Literal["dos", "unix", "mac"] = buf_get_option(nvim, buf=buf, key="fileformat")
-    if lf == "dos":
-        return "\r\n"
-    elif lf == "unix":
-        return "\n"
-    elif lf == "mac":
-        return "\n"
-    else:
-        assert False
+    return cast(Literal["\r\n", "\n", "\r"], LFfmt(lf).value)
 
 
 def buf_get_lines(nvim: Nvim, buf: Buffer, lo: int, hi: int) -> Sequence[str]:
@@ -247,3 +257,4 @@ def ask(nvim: Nvim, question: str, default: str) -> Optional[str]:
         return None
     else:
         return resp
+
