@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, Sequence
+from typing import Iterator, Optional, Sequence, Tuple
 
 from pynvim import Nvim
 from pynvim.api import Buffer, Tabpage, Window
@@ -27,11 +27,12 @@ def preview_windows_in_tab(
             yield win
 
 
-def _open_preview(nvim: Nvim) -> Window:
+def _open_preview(nvim: Nvim) -> Tuple[Window, Buffer]:
     win = next(preview_windows_in_tab(nvim), None)
     if win:
         set_cur_win(nvim, win=win)
-        return win
+        buf = win_get_buf(nvim, win=win)
+        return win, buf
     else:
         nvim.api.command("new")
         win = cur_win(nvim)
@@ -40,7 +41,7 @@ def _open_preview(nvim: Nvim) -> Window:
         buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
         height = nvim.options["previewheight"]
         nvim.api.win_set_height(win, height)
-        return win
+        return win, buf
 
 
 def buf_set_preview(
@@ -54,8 +55,7 @@ def buf_set_preview(
 
 
 def set_preview(nvim: Nvim, filetype: str, preview: str) -> Buffer:
-    win = _open_preview(nvim)
-    buf = win_get_buf(nvim, win=win)
+    _, buf = _open_preview(nvim)
     buf_set_preview(nvim, buf=buf, filetype=filetype, preview=preview.splitlines())
     return buf
 
