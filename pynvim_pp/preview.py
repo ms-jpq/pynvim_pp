@@ -45,17 +45,17 @@ def _open_preview(nvim: Nvim) -> Tuple[Window, Buffer]:
 
 
 def buf_set_preview(
-    nvim: Nvim, buf: Buffer, filetype: str, preview: Sequence[str]
+    nvim: Nvim, buf: Buffer, syntax: str, preview: Sequence[str]
 ) -> None:
     buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     buf_set_option(nvim, buf=buf, key="modifiable", val=True)
     buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview)
     buf_set_option(nvim, buf=buf, key="modifiable", val=False)
-    buf_set_option(nvim, buf=buf, key="syntax", val=filetype)
+    buf_set_option(nvim, buf=buf, key="syntax", val=syntax)
 
 
-def set_preview(nvim: Nvim, filetype: str, preview: str) -> Buffer:
+def set_preview(nvim: Nvim, syntax: str, preview: Sequence[str]) -> Buffer:
     _, buf = _open_preview(nvim)
-    buf_set_preview(nvim, buf=buf, filetype=filetype, preview=preview.splitlines())
+    buf_set_preview(nvim, buf=buf, syntax=syntax, preview=preview)
     return buf
 
