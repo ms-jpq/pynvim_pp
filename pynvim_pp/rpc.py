@@ -32,15 +32,19 @@ class RpcCallable(Generic[T]):
         self,
         name: str,
         blocking: bool,
+        schedule: bool,
         handler: Union[Callable[..., T], Callable[..., Awaitable[T]]],
     ) -> None:
         self.is_async = iscoroutinefunction(handler)
         if self.is_async and blocking:
             raise ValueError()
         else:
-            self.name = name
-            self.is_blocking = blocking
-            self._handler = handler
+            self.name, self.is_blocking, self.schedule, self._handler = (
+                name,
+                blocking,
+                schedule,
+                handler,
+            )
 
     def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[T, Awaitable[T]]:
         if self.is_async:
@@ -55,13 +59,25 @@ RpcSpec = Tuple[str, RpcCallable[Any]]
 
 def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
-    lua = f"""
-    (function()
-      {handler.name} = function(...)
-        return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
-      end
-    end)()
-    """
+    if handler.schedule:
+        lua = f"""
+        (function()
+          {handler.name} = function(...)
+            local args = {{...}}
+            vim.schedule(function()
+              return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{unpack(args)}}}})
+            end)
+          end
+        end)()
+        """
+    else:
+        lua = f"""
+        (function()
+          {handler.name} = function(...)
+            return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
+          end
+        end)()
+        """
     return dedent(lua).lstrip()
 
 
@@ -88,12 +104,15 @@ class RPC:
     def __call__(
         self,
         blocking: bool,
+        schedule: bool = False,
         name: Optional[str] = None,
     ) -> Callable[[Callable[..., T]], RpcCallable[T]]:
         def decor(handler: Callable[..., T]) -> RpcCallable[T]:
             c_name = name if name else self._name_gen(handler)
 
-            wraped = RpcCallable(name=c_name, blocking=blocking, handler=handler)
+            wraped = RpcCallable(
+                name=c_name, blocking=blocking, schedule=schedule, handler=handler
+            )
             self._handlers[wraped.name] = wraped
             return wraped
 
@@ -115,5 +134,5 @@ def nil_handler(name: str) -> RpcCallable:
     def handler(nvim: Nvim, *args: Any, **kwargs: Any) -> None:
         log.warn("MISSING RPC HANDLER FOR: %s - %s - %s", name, args, kwargs)
 
-    return RpcCallable(name=name, blocking=True, handler=handler)
+    return RpcCallable(name=name, blocking=True, schedule=False, handler=handler)
 
