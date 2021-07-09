@@ -1,5 +1,5 @@
+from asyncio import AbstractEventLoop
 from asyncio.events import get_running_loop
-from asyncio.tasks import create_task
 from concurrent.futures import Future, InvalidStateError
 from contextlib import contextmanager, suppress
 from functools import partial
@@ -15,7 +15,7 @@ from .logging import log
 T = TypeVar("T")
 
 
-def go(aw: Awaitable[T]) -> Awaitable[T]:
+def go(nvim: Nvim, aw: Awaitable[T]) -> Awaitable[T]:
     async def wrapper() -> T:
         try:
             return await aw
@@ -23,7 +23,8 @@ def go(aw: Awaitable[T]) -> Awaitable[T]:
             log.exception("%s", e)
             raise
 
-    return create_task(wrapper())
+    assert isinstance(nvim.loop, AbstractEventLoop)
+    return nvim.loop.create_task(wrapper())
 
 
 def threadsafe_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
@@ -83,7 +84,7 @@ def awrite(
     error: bool = False,
 ) -> Awaitable[None]:
     p = partial(write, nvim, val, *vals, sep=sep, end=end, error=error)
-    return go(async_call(nvim, p))
+    return go(nvim, aw=async_call(nvim, p))
 
 
 @contextmanager
@@ -96,3 +97,4 @@ def bench(
     elapsed = t2 - t1
     if elapsed >= threshold:
         write(nvim, *args, round(elapsed, precision))
+
