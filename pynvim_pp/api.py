@@ -200,7 +200,7 @@ class LFfmt(Enum):
 
 def buf_linefeed(nvim: Nvim, buf: Buffer) -> Literal["\r\n", "\n", "\r"]:
     lf: Literal["dos", "unix", "mac"] = buf_get_option(nvim, buf=buf, key="fileformat")
-    return cast(Literal["\r\n", "\n", "\r"], LFfmt(lf).value)
+    return cast(Literal["\r\n", "\n", "\r"], LFfmt[lf].value)
 
 
 def buf_get_lines(nvim: Nvim, buf: Buffer, lo: int, hi: int) -> Sequence[str]:
