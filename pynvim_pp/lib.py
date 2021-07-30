@@ -10,18 +10,15 @@ from typing import Any, Awaitable, Callable, Iterator, TypeVar, cast
 from pynvim import Nvim
 
 from .consts import linesep
-from .logging import log
+from .logging import with_suppress
 
 T = TypeVar("T")
 
 
-def go(nvim: Nvim, aw: Awaitable[T]) -> Awaitable[T]:
+def go(nvim: Nvim, aw: Awaitable[T], suppress: bool = True) -> Awaitable[T]:
     async def wrapper() -> T:
-        try:
+        with with_suppress(suppress):
             return await aw
-        except Exception as e:
-            log.exception("%s", e)
-            raise
 
     assert isinstance(nvim.loop, AbstractEventLoop)
     return nvim.loop.create_task(wrapper())
@@ -97,4 +94,3 @@ def bench(
     elapsed = t2 - t1
     if elapsed >= threshold:
         write(nvim, *args, round(elapsed, precision))
-
