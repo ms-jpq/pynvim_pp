@@ -9,7 +9,7 @@ log = getLogger(Path(__file__).resolve().parent.name)
 
 class _Handler(StreamHandler):
     def handle(self, record: LogRecord) -> bool:
-        if record.levelno < WARN:
+        if record.levelno <= WARN:
             return super().handle(record)
         else:
             return False
