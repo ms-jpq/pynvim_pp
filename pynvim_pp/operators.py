@@ -4,7 +4,8 @@ from typing import Literal, Optional, Tuple
 from pynvim import Nvim
 from pynvim.api import Buffer, Window
 
-from .api import NvimPos, buf_get_mark, buf_get_option, win_set_cursor
+from .api import NvimPos, buf_get_mark, buf_get_option
+from .atomic import Atomic
 
 VisualMode = Literal["v", "V"]
 VisualTypes = Optional[Literal["char", "line", "block"]]
@@ -28,9 +29,11 @@ def set_visual_selection(
     nvim: Nvim, win: Window, mode: VisualMode, mark1: NvimPos, mark2: NvimPos
 ) -> None:
     (r1, c1), (r2, c2) = mark1, mark2
-    win_set_cursor(nvim, win=win, row=r1, col=c1)
-    nvim.command(f"norm! {mode}")
-    win_set_cursor(nvim, win=win, row=r2, col=c2)
+    atomic = Atomic()
+    atomic.win_set_cursor(win, (r1 + 1, c1))
+    atomic.command(f"norm! {mode}")
+    atomic.win_set_cursor(win, (r2 + 1, c2))
+    atomic.commit(nvim)
 
 
 def p_indent(line: str, tabsize: int) -> int:
