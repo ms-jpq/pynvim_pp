@@ -12,11 +12,11 @@ from pynvim import Nvim
 from .consts import linesep
 from .logging import with_suppress
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
-def go(nvim: Nvim, aw: Awaitable[T], suppress: bool = True) -> Awaitable[T]:
-    async def wrapper() -> T:
+def go(nvim: Nvim, aw: Awaitable[_T], suppress: bool = True) -> Awaitable[_T]:
+    async def wrapper() -> _T:
         with with_suppress(suppress):
             return await aw
 
@@ -24,7 +24,7 @@ def go(nvim: Nvim, aw: Awaitable[T], suppress: bool = True) -> Awaitable[T]:
     return nvim.loop.create_task(wrapper())
 
 
-def threadsafe_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+def threadsafe_call(nvim: Nvim, fn: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
     fut: Future = Future()
 
     def cont() -> None:
@@ -38,10 +38,12 @@ def threadsafe_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any)
                 fut.set_result(ret)
 
     nvim.async_call(cont)
-    return cast(T, fut.result())
+    return cast(_T, fut.result())
 
 
-async def async_call(nvim: Nvim, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+async def async_call(
+    nvim: Nvim, fn: Callable[..., _T], *args: Any, **kwargs: Any
+) -> _T:
     loop = get_running_loop()
     fut: Future = Future()
 

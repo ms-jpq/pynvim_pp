@@ -22,18 +22,18 @@ from pynvim import Nvim
 from .atomic import Atomic
 from .logging import log
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 RpcMsg = Tuple[str, Sequence[Sequence[Any]]]
 
 
-class RpcCallable(Generic[T]):
+class RpcCallable(Generic[_T]):
     def __init__(
         self,
         name: str,
         blocking: bool,
         schedule: bool,
-        handler: Union[Callable[..., T], Callable[..., Awaitable[T]]],
+        handler: Union[Callable[..., _T], Callable[..., Awaitable[_T]]],
     ) -> None:
         self.is_async = iscoroutinefunction(handler)
         if self.is_async and blocking:
@@ -46,12 +46,12 @@ class RpcCallable(Generic[T]):
                 handler,
             )
 
-    def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[T, Awaitable[T]]:
+    def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[_T, Awaitable[_T]]:
         if self.is_async:
-            aw = cast(Awaitable[T], self._handler(nvim, *args, **kwargs))
+            aw = cast(Awaitable[_T], self._handler(nvim, *args, **kwargs))
             return aw
         else:
-            return cast(T, self._handler(nvim, *args, **kwargs))
+            return cast(_T, self._handler(nvim, *args, **kwargs))
 
 
 RpcSpec = Tuple[str, RpcCallable[Any]]
@@ -106,8 +106,8 @@ class RPC:
         blocking: bool,
         schedule: bool = False,
         name: Optional[str] = None,
-    ) -> Callable[[Callable[..., T]], RpcCallable[T]]:
-        def decor(handler: Callable[..., T]) -> RpcCallable[T]:
+    ) -> Callable[[Callable[..., _T]], RpcCallable[_T]]:
+        def decor(handler: Callable[..., _T]) -> RpcCallable[_T]:
             c_name = name if name else self._name_gen(handler)
 
             wraped = RpcCallable(

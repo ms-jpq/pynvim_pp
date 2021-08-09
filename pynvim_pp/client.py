@@ -4,25 +4,15 @@ from asyncio.tasks import run_coroutine_threadsafe
 from concurrent.futures import Executor
 from os import getpid, getppid, kill
 from queue import SimpleQueue
+from signal import SIGTERM
 from time import sleep
-from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
+from typing import Any, Awaitable, MutableMapping, Protocol, Sequence
 
 from pynvim import Nvim
 
 from .consts import linesep
 from .logging import log, with_suppress
 from .rpc import RpcCallable, RpcMsg, nil_handler
-
-try:
-    from signal import SIGKILL
-except ImportError:
-    from signal import SIGTERM
-
-    SIGDED = SIGTERM
-else:
-    SIGDED = SIGKILL
-
-T = TypeVar("T")
 
 
 class Client(Protocol):
@@ -71,10 +61,6 @@ class BasicClient(Client):
         return fut.result()
 
 
-def _exit() -> None:
-    kill(getpid(), SIGDED)
-
-
 def run_client(nvim: Nvim, pool: Executor, client: Client) -> int:
     def on_rpc(name: str, args: Sequence[Sequence[Any]]) -> Any:
         try:
@@ -101,7 +87,7 @@ def run_client(nvim: Nvim, pool: Executor, client: Client) -> int:
         while True:
             sleep(1)
             if getppid() != ppid:
-                _exit()
+                kill(getpid(), SIGTERM)
 
     pool.submit(forever1)
     pool.submit(forever2)

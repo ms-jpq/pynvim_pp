@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Iterable, MutableMapping, Optional, Tuple, TypeVar
+from typing import Iterable, MutableMapping, Optional, Tuple
 
 from pynvim.api import Buffer
 
 from .atomic import Atomic
-
-T = TypeVar("T")
 
 
 @dataclass(frozen=True)

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from inspect import currentframe
-from typing import Callable, MutableMapping, Optional, Sequence, TypeVar
+from typing import Callable, MutableMapping, Optional, Sequence
 from uuid import uuid4
 
 from .atomic import Atomic
-
-T = TypeVar("T")
 
 
 def _name_gen() -> str:
