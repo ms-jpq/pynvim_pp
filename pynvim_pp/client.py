@@ -1,16 +1,16 @@
 from abc import abstractmethod
 from asyncio.events import AbstractEventLoop
 from asyncio.tasks import run_coroutine_threadsafe
+from concurrent.futures import Executor
 from os import getpid, getppid, kill
 from queue import SimpleQueue
-from threading import Thread
 from time import sleep
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence, TypeVar
 
 from pynvim import Nvim
 
 from .consts import linesep
-from .logging import log
+from .logging import log, with_suppress
 from .rpc import RpcCallable, RpcMsg, nil_handler
 
 try:
@@ -27,6 +27,10 @@ T = TypeVar("T")
 
 class Client(Protocol):
     @abstractmethod
+    def __init__(self, pool: Executor) -> None:
+        ...
+
+    @abstractmethod
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
         ...
 
@@ -36,7 +40,8 @@ class Client(Protocol):
 
 
 class BasicClient(Client):
-    def __init__(self) -> None:
+    def __init__(self, pool: Executor) -> None:
+        self._pool = pool
         self._handlers: MutableMapping[str, RpcCallable] = {}
         self._q: SimpleQueue = SimpleQueue()
 
@@ -70,7 +75,7 @@ def _exit() -> None:
     kill(getpid(), SIGDED)
 
 
-def run_client(nvim: Nvim, client: Client) -> int:
+def run_client(nvim: Nvim, pool: Executor, client: Client) -> int:
     def on_rpc(name: str, args: Sequence[Sequence[Any]]) -> Any:
         try:
             return client.on_msg(nvim, (name, args))
@@ -78,9 +83,11 @@ def run_client(nvim: Nvim, client: Client) -> int:
             fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
             log.exception(fmt, name, args, e)
 
+    @with_suppress()
     def main() -> int:
         return client.wait(nvim)
 
+    @with_suppress()
     def forever1() -> None:
         nvim.run_loop(
             err_cb=lambda err: log.error("%s", err),
@@ -88,6 +95,7 @@ def run_client(nvim: Nvim, client: Client) -> int:
             request_cb=on_rpc,
         )
 
+    @with_suppress()
     def forever2() -> None:
         ppid = getppid()
         while True:
@@ -95,7 +103,6 @@ def run_client(nvim: Nvim, client: Client) -> int:
             if getppid() != ppid:
                 _exit()
 
-    Thread(target=forever1, daemon=True).start()
-    Thread(target=forever2, daemon=True).start()
+    pool.submit(forever1)
+    pool.submit(forever2)
     return main()
-
