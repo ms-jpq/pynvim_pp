@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from itertools import repeat
 from math import floor
 from typing import Iterator, Optional
 from uuid import uuid4
@@ -17,7 +16,6 @@ from .api import (
 )
 
 FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
-FLOATWIN_BORDER_BUF_VAR_NAME = f"float_win_border_buf_{uuid4().hex}"
 
 
 @dataclass(frozen=True)
@@ -41,6 +39,7 @@ def _open_float_win(
     height: int,
     pos: NvimPos,
     focusable: bool,
+    border: str,
 ) -> Window:
     row, col = pos
     opts = {
@@ -52,6 +51,7 @@ def _open_float_win(
         "row": row,
         "col": col,
         "focusable": focusable,
+        "border": border,
     }
     win: Window = nvim.api.open_win(buf, True, opts)
     win_set_option(nvim, win=win, key="winhighlight", val="Normal:Floating")
@@ -76,9 +76,7 @@ def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> Floa
     )
 
     uid = uuid4().hex
-
     win_set_var(nvim, win=win, key=FLOATWIN_VAR_NAME, val=uid)
-
     buf_set_var(nvim, buf=buf, key=FLOATWIN_VAR_NAME, val=uid)
 
     return FloatWin(uid=uid, win=win, buf=buf)
