@@ -58,7 +58,9 @@ def _open_float_win(
     return win
 
 
-def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> FloatWin:
+def open_float_win(
+    nvim: Nvim, margin: int, relsize: float, buf: Buffer, border: str
+) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
     t_width, t_height = nvim.options["columns"], nvim.options["lines"]
@@ -73,6 +75,7 @@ def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> Floa
         height=height - 2,
         pos=(row + 1, col + 1),
         focusable=True,
+        border=border,
     )
 
     uid = uuid4().hex
