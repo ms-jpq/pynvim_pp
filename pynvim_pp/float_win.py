@@ -9,9 +9,7 @@ from pynvim.api import Buffer, Window
 
 from .api import (
     NvimPos,
-    buf_set_lines,
     buf_set_var,
-    create_buf,
     list_wins,
     win_get_var,
     win_set_option,
@@ -25,8 +23,6 @@ FLOATWIN_BORDER_BUF_VAR_NAME = f"float_win_border_buf_{uuid4().hex}"
 @dataclass(frozen=True)
 class FloatWin:
     uid: str
-    border_win: Window
-    border_buf: Buffer
     win: Window
     buf: Buffer
 
@@ -62,23 +58,6 @@ def _open_float_win(
     return win
 
 
-def _border_buf(nvim: Nvim, width: int, height: int) -> Buffer:
-    assert width >= 2
-    assert height >= 2
-
-    top = "╭" + ("─" * (width - 2)) + "╮"
-    mid = "│" + ("#" * (width - 2)) + "│"
-    btm = "╰" + ("─" * (width - 2)) + "╯"
-    lines = tuple((top, *repeat(mid, times=height - 2), btm))
-
-    buf = create_buf(
-        nvim, listed=False, scratch=True, wipe=True, nofile=True, noswap=True
-    )
-    buf_set_var(nvim, buf=buf, key=FLOATWIN_BORDER_BUF_VAR_NAME, val=True)
-    buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=lines)
-    return buf
-
-
 def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
@@ -87,15 +66,6 @@ def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> Floa
     height = floor((t_height - margin) * relsize)
     row, col = (t_height - height) / 2, (t_width - width) / 2
 
-    border_buf = _border_buf(nvim, width=width, height=height)
-    border_win = _open_float_win(
-        nvim,
-        buf=border_buf,
-        width=width,
-        height=height,
-        pos=(row, col),
-        focusable=False,
-    )
     win = _open_float_win(
         nvim,
         buf=buf,
@@ -106,11 +76,9 @@ def open_float_win(nvim: Nvim, margin: int, relsize: float, buf: Buffer) -> Floa
     )
 
     uid = uuid4().hex
-    win_set_var(nvim, win=border_win, key=FLOATWIN_VAR_NAME, val=uid)
+
     win_set_var(nvim, win=win, key=FLOATWIN_VAR_NAME, val=uid)
-    buf_set_var(nvim, buf=border_buf, key=FLOATWIN_VAR_NAME, val=uid)
+
     buf_set_var(nvim, buf=buf, key=FLOATWIN_VAR_NAME, val=uid)
 
-    return FloatWin(
-        uid=uid, border_win=border_win, border_buf=border_buf, win=win, buf=buf
-    )
+    return FloatWin(uid=uid, win=win, buf=buf)
