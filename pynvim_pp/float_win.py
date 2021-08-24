@@ -46,6 +46,7 @@ def _open_float_win(
         "relative": "editor",
         "anchor": "NW",
         "style": "minimal",
+        "noautocmd": True,
         "width": width,
         "height": height,
         "row": row,
