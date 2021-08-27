@@ -6,6 +6,7 @@ from functools import partial
 from itertools import chain
 from time import monotonic
 from typing import Any, Awaitable, Callable, Iterator, TypeVar, cast
+from unicodedata import east_asian_width
 
 from pynvim import Nvim
 
@@ -13,6 +14,27 @@ from .consts import linesep
 from .logging import with_suppress
 
 _T = TypeVar("_T")
+
+_UNICODE_WIDTH_LOOKUP = {
+    "W": 2,  # CJK
+    "N": 2,  # Non printable
+}
+
+_SPECIAL = {"\n", "\r", "\0"}
+
+
+def display_width(text: str, tabsize: int) -> int:
+    def cont() -> Iterator[int]:
+        for char in text:
+            if char == "\t":
+                yield tabsize
+            elif char in _SPECIAL:
+                yield 2
+            else:
+                code = east_asian_width(char)
+                yield _UNICODE_WIDTH_LOOKUP.get(code, 1)
+
+    return sum(cont())
 
 
 def go(nvim: Nvim, aw: Awaitable[_T], suppress: bool = True) -> Awaitable[_T]:

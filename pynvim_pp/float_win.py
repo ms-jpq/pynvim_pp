@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from math import floor
-from typing import Iterator, Optional, Union, Sequence, Tuple
+from typing import Iterator, Literal, Optional, Tuple, Union
 from uuid import uuid4
 
 from pynvim import Nvim
@@ -14,6 +14,7 @@ from .api import (
     win_set_option,
     win_set_var,
 )
+from .lib import display_width
 
 FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
 
@@ -25,6 +26,13 @@ class FloatWin:
     buf: Buffer
 
 
+Border = Union[
+    None,
+    Literal["single", "double", "rounded", "solid", "shadow"],
+    Tuple[str, str, str, str, str, str, str, str],
+]
+
+
 def list_floatwins(nvim: Nvim) -> Iterator[Window]:
     for win in list_wins(nvim):
         flag: Optional[str] = win_get_var(nvim, win, FLOATWIN_VAR_NAME)
@@ -32,25 +40,18 @@ def list_floatwins(nvim: Nvim) -> Iterator[Window]:
             yield win
 
 
-def get_border_size(
-    border: Union[str, Sequence[Union[str, Sequence[str]]]],
+def border_w_h(
+    border: Border,
 ) -> Tuple[int, int]:
-    if isinstance(border, str):
-        return {
-            "none": (0, 0),
-            "shadow": (1, 1),
-        }.get(border, (2, 2))
+    if not border:
+        return (0, 0)
+    elif isinstance(border, str):
+        return (1, 1) if border == "shadow" else (2, 2)
     else:
-
-        def border_size(id: int) -> int:
-            id = id % len(border)
-            if isinstance(border[id], str):
-                return 1 if border[id] else 0
-            else:
-                return 1 if border[id][0] else 0
-
-        # (height, width)
-        return (border_size(1) + border_size(5), border_size(3) + border_size(7))
+        return (
+            display_width(border[7], tabsize=2) + display_width(border[3], tabsize=2),
+            display_width(border[1], tabsize=2) + display_width(border[5], tabsize=2),
+        )
 
 
 def _open_float_win(
@@ -60,7 +61,7 @@ def _open_float_win(
     height: int,
     pos: NvimPos,
     focusable: bool,
-    border: Union[str, Sequence[Union[str, Sequence[str]]]],
+    border: Border,
 ) -> Window:
     row, col = pos
     opts = {
@@ -85,22 +86,22 @@ def open_float_win(
     margin: int,
     relsize: float,
     buf: Buffer,
-    border: Union[str, Sequence[Union[str, Sequence[str]]]],
+    border: Border,
 ) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
     t_width, t_height = nvim.options["columns"], nvim.options["lines"]
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
-    border_height, border_width = get_border_size(border)
-    row = (t_height - height - border_height) / 2
-    col = (t_width - width - border_width) / 2
+    b_width, b_height = border_w_h(border)
+    row = (t_height - height) / 2
+    col = (t_width - width) / 2
 
     win = _open_float_win(
         nvim,
         buf=buf,
-        width=width - 2,
-        height=height - 2,
+        width=width - b_width,
+        height=height - b_height,
         pos=(row + 1, col + 1),
         focusable=True,
         border=border,
