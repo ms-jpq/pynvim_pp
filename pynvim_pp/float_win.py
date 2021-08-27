@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from math import floor
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Union, Sequence, Tuple
 from uuid import uuid4
 
 from pynvim import Nvim
@@ -32,6 +32,27 @@ def list_floatwins(nvim: Nvim) -> Iterator[Window]:
             yield win
 
 
+def get_border_size(
+    border: Union[str, Sequence[Union[str, Sequence[str]]]],
+) -> Tuple[int, int]:
+    if isinstance(border, str):
+        return {
+            "none": (0, 0),
+            "shadow": (1, 1),
+        }.get(border, (2, 2))
+    else:
+
+        def border_size(id: int) -> int:
+            id = id % len(border)
+            if isinstance(border[id], str):
+                return 1 if border[id] else 0
+            else:
+                return 1 if border[id][0] else 0
+
+        # (height, width)
+        return (border_size(1) + border_size(5), border_size(3) + border_size(7))
+
+
 def _open_float_win(
     nvim: Nvim,
     buf: Buffer,
@@ -39,7 +60,7 @@ def _open_float_win(
     height: int,
     pos: NvimPos,
     focusable: bool,
-    border: str,
+    border: Union[str, Sequence[Union[str, Sequence[str]]]],
 ) -> Window:
     row, col = pos
     opts = {
@@ -60,14 +81,20 @@ def _open_float_win(
 
 
 def open_float_win(
-    nvim: Nvim, margin: int, relsize: float, buf: Buffer, border: str
+    nvim: Nvim,
+    margin: int,
+    relsize: float,
+    buf: Buffer,
+    border: Union[str, Sequence[Union[str, Sequence[str]]]],
 ) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
     t_width, t_height = nvim.options["columns"], nvim.options["lines"]
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
-    row, col = (t_height - height) / 2, (t_width - width) / 2
+    border_height, border_width = get_border_size(border)
+    row = (t_height - height - border_height) / 2
+    col = (t_width - width - border_width) / 2
 
     win = _open_float_win(
         nvim,
