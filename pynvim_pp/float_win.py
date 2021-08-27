@@ -94,15 +94,15 @@ def open_float_win(
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
     b_width, b_height = border_w_h(border)
-    row = (t_height - height) / 2
-    col = (t_width - width) / 2
+    row = (t_height - height) / 2 + 1
+    col = (t_width - width) / 2 + 1
 
     win = _open_float_win(
         nvim,
         buf=buf,
         width=width - b_width,
         height=height - b_height,
-        pos=(row + 1, col + 1),
+        pos=(row, col),
         focusable=True,
         border=border,
     )
