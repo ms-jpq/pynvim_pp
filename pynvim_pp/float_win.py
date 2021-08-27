@@ -30,6 +30,16 @@ Border = Union[
     None,
     Literal["single", "double", "rounded", "solid", "shadow"],
     Tuple[str, str, str, str, str, str, str, str],
+    Tuple[
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+        Tuple[str, str],
+    ],
 ]
 
 
@@ -48,10 +58,19 @@ def border_w_h(
     elif isinstance(border, str):
         return (1, 1) if border == "shadow" else (2, 2)
     else:
-        return (
-            display_width(border[7], tabsize=2) + display_width(border[3], tabsize=2),
-            display_width(border[1], tabsize=2) + display_width(border[5], tabsize=2),
-        )
+
+        def size(spec: Union[str, Tuple[str, str]]) -> int:
+            if isinstance(spec, str):
+                char = spec
+            else:
+                char, _ = spec
+            length = display_width(char, tabsize=16)
+            assert length in {0, 1}
+            return length
+
+        width = size(border[7]) + size(border[3])
+        height = size(border[1]) + size(border[5])
+        return width, height
 
 
 def _open_float_win(
