@@ -20,7 +20,7 @@ _UNICODE_WIDTH_LOOKUP = {
     "N": 2,  # Non printable
 }
 
-_SPECIAL = {"\n", "\r", "\0"}
+_SPECIAL = {"\n", "\r"}
 
 
 def display_width(text: str, tabsize: int) -> int:
