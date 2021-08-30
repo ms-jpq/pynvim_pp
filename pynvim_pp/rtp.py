@@ -6,6 +6,7 @@ from typing import Iterable, Iterator
 from pynvim import Nvim
 
 from .atomic import Atomic
+from .lib import with_suppress
 
 
 def _walk(path: Path) -> Iterator[Path]:
@@ -27,6 +28,7 @@ def rtp_packages(nvim: Nvim, plugins: Iterable[Path]) -> Atomic:
         if plug.exists():
             scripts = (p for p in _walk(plug) if p.suffix in {".lua", ".vim"})
             for script in sorted(scripts, key=lambda p: tuple(map(strxfrm, p.parts))):
-                atomic.command(f"source {script}")
+                with with_suppress():
+                    atomic.command(f"source {script}")
 
     return atomic
