@@ -1,4 +1,6 @@
 from enum import Enum
+from os.path import normcase
+from pathlib import PurePath
 from typing import (
     Any,
     Iterator,
@@ -24,9 +26,9 @@ def new_buf(nvim: Nvim, nr: int) -> Buffer:
     return buf
 
 
-def get_cwd(nvim: Nvim) -> str:
-    cwd: str = nvim.funcs.getcwd()
-    return cwd
+def get_cwd(nvim: Nvim) -> PurePath:
+    cwd = normcase(nvim.funcs.getcwd())
+    return PurePath(cwd)
 
 
 def get_option(nvim: Nvim, key: str) -> Any:
@@ -257,4 +259,3 @@ def ask(nvim: Nvim, question: str, default: str) -> Optional[str]:
         return None
     else:
         return resp
-
