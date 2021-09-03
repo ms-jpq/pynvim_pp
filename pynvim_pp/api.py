@@ -187,7 +187,7 @@ def buf_set_extmarks(
         nvim.api.buf_set_extmark(buf, id, r1, c1, opts)
 
 
-def buf_get_marks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
+def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
     marks: Sequence[
         Tuple[int, int, int, Mapping[str, Any]]
     ] = nvim.api.buf_get_extmarks(buf, id, 0, -1, {"details": True})
