@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from os.path import normcase
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import (
     Any,
     Iterable,
@@ -42,9 +42,9 @@ def get_cwd(nvim: Nvim) -> PurePath:
     return PurePath(cwd)
 
 
-def iter_rtps(nvim: Nvim) -> Iterator[PurePath]:
+def iter_rtps(nvim: Nvim) -> Iterator[Path]:
     for path in nvim.api.list_runtime_paths():
-        yield PurePath(normcase(path))
+        yield Path(normcase(path))
 
 
 def get_option(nvim: Nvim, key: str) -> Any:
