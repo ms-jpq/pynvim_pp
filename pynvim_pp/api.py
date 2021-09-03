@@ -28,7 +28,7 @@ class ExtMark:
     idx: int
     begin: NvimPos
     end: NvimPos
-    meta: Mapping[str, str]
+    meta: Mapping[str, Any]
 
 
 def new_buf(nvim: Nvim, nr: int) -> Buffer:
