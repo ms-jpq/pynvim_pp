@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from enum import Enum
 from os.path import normcase
 from pathlib import PurePath
 from typing import (
     Any,
+    Iterable,
     Iterator,
     Literal,
     Mapping,
@@ -12,12 +14,21 @@ from typing import (
     Union,
     cast,
 )
+from uuid import UUID
 
 from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
 NvimPos = Tuple[int, int]
+
+
+@dataclass(frozen=True)
+class ExtMark:
+    idx: int
+    begin: NvimPos
+    end: NvimPos
+    meta: Mapping[str, str]
 
 
 def new_buf(nvim: Nvim, nr: int) -> Buffer:
@@ -38,6 +49,15 @@ def get_option(nvim: Nvim, key: str) -> Any:
 
 def set_option(nvim: Nvim, key: str, val: Union[str, int, bool]) -> None:
     nvim.api.set_option(key, val)
+
+
+def create_ns(nvim: Nvim, ns: UUID) -> int:
+    id: int = nvim.api.create_namespace(ns.hex)
+    return id
+
+
+def clear_ns(nvim: Nvim, buf: Buffer, id: int, lo: int = 0, hi: int = -1) -> None:
+    nvim.api.buf_clear_namespace(buf, id, lo, hi)
 
 
 def cur_tab(nvim: Nvim) -> Tabpage:
@@ -151,6 +171,33 @@ def buf_get_var(nvim: Nvim, buf: Buffer, key: str) -> Optional[Any]:
 
 def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Any) -> None:
     nvim.api.buf_set_var(buf, key, val)
+
+
+def buf_set_extmarks(
+    nvim: Nvim, buf: Buffer, id: int, marks: Iterable[ExtMark]
+) -> None:
+    for mark in marks:
+        (r1, c1), (r2, c2) = mark.begin, mark.end
+        opts: Mapping[str, Union[str, int]] = {
+            **mark.meta,
+            "end_line": r2,
+            "end_col": c2,
+        }
+        nvim.api.buf_set_extmark(buf, id, r1, c1, opts)
+
+
+def buf_get_marks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
+    marks: Sequence[
+        Tuple[int, int, int, Mapping[str, Any]]
+    ] = nvim.api.buf_get_extmarks(buf, id, 0, -1, {"details": True})
+    for idx, r1, c1, details in marks:
+        mark = ExtMark(
+            idx=idx,
+            begin=(r1, c1),
+            end=(details["end_row"], details["end_col"]),
+            meta=details,
+        )
+        yield mark
 
 
 def win_close(nvim: Nvim, win: Window) -> None:
