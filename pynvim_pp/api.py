@@ -180,6 +180,7 @@ def buf_set_extmarks(
         (r1, c1), (r2, c2) = mark.begin, mark.end
         opts: Mapping[str, Union[str, int]] = {
             **mark.meta,
+            "id": mark.idx,
             "end_line": r2,
             "end_col": c2,
         }
