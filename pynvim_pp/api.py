@@ -218,8 +218,10 @@ def win_close(nvim: Nvim, win: Window) -> None:
 
 
 def buf_close(nvim: Nvim, buf: Buffer) -> None:
-    # nvim.api.buf_delete(buf, {"force": True})
-    nvim.command(f"bwipeout! {buf.number}")
+    if nvim.funcs.has("nvim-0.5"):
+        nvim.api.buf_delete(buf, {"force": True})
+    else:
+        nvim.command(f"bwipeout! {buf.number}")
 
 
 def win_get_cursor(nvim: Nvim, win: Window) -> NvimPos:
