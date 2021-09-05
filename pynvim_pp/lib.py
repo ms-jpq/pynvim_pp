@@ -88,12 +88,15 @@ def write(
     val: Any,
     *vals: Any,
     sep: str = " ",
-    end: str = linesep,
     error: bool = False,
 ) -> None:
-    write = nvim.api.err_write if error else nvim.api.out_write
-    msg = sep.join(str(v) for v in chain((val,), vals)) + end
-    write(msg)
+    msg = sep.join(str(v) for v in chain((val,), vals))
+    if nvim.funcs.has("nvim-0.5"):
+        hl = "ErrorMsg" if error else "Normal"
+        nvim.api.echo(((msg, hl),), True, {})
+    else:
+        write = nvim.api.err_write if error else nvim.api.out_write
+        write(msg=linesep)
 
 
 def awrite(

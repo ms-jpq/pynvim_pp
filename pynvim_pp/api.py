@@ -42,7 +42,7 @@ def get_cwd(nvim: Nvim) -> PurePath:
     return PurePath(cwd)
 
 
-def iter_rtps(nvim: Nvim) -> Iterator[Path]:
+def iter_rtps(nvim: Nvim) -> Sequence[Path]:
     for path in nvim.api.list_runtime_paths():
         yield Path(normcase(path))
 
