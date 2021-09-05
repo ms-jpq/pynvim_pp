@@ -26,13 +26,24 @@ def operator_marks(
 
 
 def set_visual_selection(
-    nvim: Nvim, win: Window, mode: VisualMode, mark1: NvimPos, mark2: NvimPos
+    nvim: Nvim,
+    win: Window,
+    mode: VisualMode,
+    mark1: NvimPos,
+    mark2: NvimPos,
+    reverse: bool = False,
 ) -> None:
     (r1, c1), (r2, c2) = mark1, mark2
     atomic = Atomic()
-    atomic.win_set_cursor(win, (r1 + 1, c1))
-    atomic.command(f"norm! {mode}")
-    atomic.win_set_cursor(win, (r2 + 1, c2))
+    if reverse:
+        atomic.win_set_cursor(win, (r2 + 1, c2))
+        atomic.command(f"norm! {mode}")
+        atomic.win_set_cursor(win, (r1 + 1, c1))
+
+    else:
+        atomic.win_set_cursor(win, (r1 + 1, c1))
+        atomic.command(f"norm! {mode}")
+        atomic.win_set_cursor(win, (r2 + 1, c2))
     atomic.commit(nvim)
 
 
