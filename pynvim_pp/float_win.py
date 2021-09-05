@@ -87,14 +87,15 @@ def _open_float_win(
         "relative": "editor",
         "anchor": "NW",
         "style": "minimal",
-        "noautocmd": True,
         "width": width,
         "height": height,
         "row": row,
         "col": col,
         "focusable": focusable,
-        "border": border,
     }
+    if nvim.funcs.has("nvim-0.5"):
+        opts.update(noautocmd=True, border=border)
+
     win: Window = nvim.api.open_win(buf, True, opts)
     win_set_option(nvim, win=win, key="winhighlight", val="Normal:Floating")
     return win
@@ -109,6 +110,9 @@ def open_float_win(
 ) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
+    if not nvim.funcs.has("nvim-0.5"):
+        border = None
+
     t_width, t_height = nvim.options["columns"], nvim.options["lines"]
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
