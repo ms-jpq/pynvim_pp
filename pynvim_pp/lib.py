@@ -92,7 +92,7 @@ def write(
 ) -> None:
     msg = sep.join(str(v) for v in chain((val,), vals))
     if nvim.funcs.has("nvim-0.5"):
-        hl = "ErrorMsg" if error else "Normal"
+        hl = "ErrorMsg" if error else ""
         nvim.api.echo(((msg, hl),), True, {})
     else:
         write = nvim.api.err_write if error else nvim.api.out_write
