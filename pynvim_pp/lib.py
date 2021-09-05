@@ -91,9 +91,8 @@ def write(
     error: bool = False,
 ) -> None:
     msg = sep.join(str(v) for v in chain((val,), vals))
-    if nvim.funcs.has("nvim-0.5"):
-        hl = "ErrorMsg" if error else ""
-        nvim.api.echo(((msg, hl),), True, {})
+    if nvim.funcs.has("nvim-0.5") and error:
+        nvim.api.echo(((msg, "ErrorMsg"),), True, {})
     else:
         write = nvim.api.err_write if error else nvim.api.out_write
         write(msg=linesep)
