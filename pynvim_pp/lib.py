@@ -91,7 +91,7 @@ def write(
     error: bool = False,
 ) -> None:
     msg = sep.join(str(v) for v in chain((val,), vals))
-    if nvim.funcs.has("nvim-0.5") :
+    if nvim.funcs.has("nvim-0.5"):
         a = (msg, "ErrorMsg") if error else (msg,)
         nvim.api.echo((a,), True, {})
     else:
@@ -104,10 +104,9 @@ def awrite(
     val: Any,
     *vals: Any,
     sep: str = " ",
-    end: str = linesep,
     error: bool = False,
 ) -> Awaitable[None]:
-    p = partial(write, nvim, val, *vals, sep=sep, end=end, error=error)
+    p = partial(write, nvim, val, *vals, sep=sep, error=error)
     return go(nvim, aw=async_call(nvim, p))
 
 
