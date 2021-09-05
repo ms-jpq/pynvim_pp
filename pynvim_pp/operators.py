@@ -19,6 +19,7 @@ def writable(nvim: Nvim, buf: Buffer) -> bool:
 def operator_marks(
     nvim: Nvim, buf: Buffer, visual_type: VisualTypes
 ) -> Tuple[NvimPos, NvimPos]:
+    assert visual_type in {None, "char", "line", "block"}
     mark1, mark2 = ("[", "]") if visual_type else ("<", ">")
     row1, col1 = buf_get_mark(nvim, buf=buf, mark=mark1)
     row2, col2 = buf_get_mark(nvim, buf=buf, mark=mark2)
@@ -33,6 +34,7 @@ def set_visual_selection(
     mark2: NvimPos,
     reverse: bool = False,
 ) -> None:
+    assert mode in {"v", "V"}
     (r1, c1), (r2, c2) = mark1, mark2
     atomic = Atomic()
     if reverse:
