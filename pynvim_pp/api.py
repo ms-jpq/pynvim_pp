@@ -277,6 +277,11 @@ def buf_set_lines(
     nvim.api.buf_set_lines(buf, lo, hi, True, lines)
 
 
+def buf_set_text(nvim: Nvim, buf: Buffer, begin: NvimPos, end:NvimPos, text: Sequence[str]) -> None:
+    (r1, c1), (r2, c2) = begin, end
+    nvim.api.buf_set_text(buf, r1, c1, r2, c2, text)
+
+
 def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> NvimPos:
     row, col = nvim.api.buf_get_mark(buf, mark)
     return row - 1, col
