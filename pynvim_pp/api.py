@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from os.path import normcase
+from os.path import expanduser, normcase
 from pathlib import Path, PurePath
 from typing import (
     Any,
@@ -43,7 +43,9 @@ def get_cwd(nvim: Nvim) -> PurePath:
 
 
 def iter_rtps(nvim: Nvim) -> Sequence[Path]:
-    return tuple(Path(normcase(path)) for path in nvim.api.list_runtime_paths())
+    return tuple(
+        Path(normcase(expanduser(path))) for path in nvim.api.list_runtime_paths()
+    )
 
 
 def get_option(nvim: Nvim, key: str) -> Any:
@@ -277,7 +279,9 @@ def buf_set_lines(
     nvim.api.buf_set_lines(buf, lo, hi, True, lines)
 
 
-def buf_set_text(nvim: Nvim, buf: Buffer, begin: NvimPos, end:NvimPos, text: Sequence[str]) -> None:
+def buf_set_text(
+    nvim: Nvim, buf: Buffer, begin: NvimPos, end: NvimPos, text: Sequence[str]
+) -> None:
     (r1, c1), (r2, c2) = begin, end
     nvim.api.buf_set_text(buf, r1, c1, r2, c2, text)
 
