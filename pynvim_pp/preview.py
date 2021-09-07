@@ -47,7 +47,7 @@ def _open_preview(nvim: Nvim) -> Tuple[Window, Buffer]:
 def buf_set_preview(
     nvim: Nvim, buf: Buffer, syntax: str, preview: Sequence[str]
 ) -> None:
-    buf_set_option(nvim, buf=buf, key="undolevel", val=-1)
+    buf_set_option(nvim, buf=buf, key="undolevels", val=-1)
     buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
     buf_set_option(nvim, buf=buf, key="modifiable", val=True)
     buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview)
