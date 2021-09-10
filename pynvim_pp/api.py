@@ -1,3 +1,4 @@
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum
 from os.path import expanduser, normcase
@@ -223,22 +224,23 @@ def extmarks_text(
 
     def cont() -> Iterator[Tuple[ExtMark, str]]:
         for mark in marks:
-            (r1, c1), (r2, c2) = mark.begin, mark.end
-            lo, hi = min(r1, r2), max(r1, r2) + 1
-            lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
+            with suppress(NvimError):
+                (r1, c1), (r2, c2) = mark.begin, mark.end
+                lo, hi = min(r1, r2), max(r1, r2) + 1
+                lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
 
-            def cont() -> Iterator[str]:
-                for idx, line in enumerate(lines, start=lo):
-                    if idx == r1 and idx == r2:
-                        yield decode(encode(line)[c1:c2])
-                    elif idx == r1:
-                        yield decode(encode(line)[c1:])
-                    elif idx == r2:
-                        yield decode(encode(line)[:c2])
-                    else:
-                        yield line
+                def cont() -> Iterator[str]:
+                    for idx, line in enumerate(lines, start=lo):
+                        if idx == r1 and idx == r2:
+                            yield decode(encode(line)[c1:c2])
+                        elif idx == r1:
+                            yield decode(encode(line)[c1:])
+                        elif idx == r2:
+                            yield decode(encode(line)[:c2])
+                        else:
+                            yield line
 
-            yield mark, linesep.join(cont())
+                yield mark, linesep.join(cont())
 
     return {mark: text for mark, text in cont()}
 
