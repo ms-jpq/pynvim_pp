@@ -20,6 +20,8 @@ from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
+from .lib import decode, encode
+
 NvimPos = Tuple[int, int]
 
 
@@ -212,6 +214,28 @@ def buf_del_extmarks(
 ) -> None:
     for mark in marks:
         nvim.api.buf_del_extmark(buf, id, mark.idx)
+
+
+def extmark_text(
+    nvim: Nvim, buf: Buffer, mark: ExtMark, linesep: Literal["\r\n", "\n", "\r", None]
+) -> str:
+    linesep = linesep or buf_linefeed(nvim, buf=buf)
+    (r1, c1), (r2, c2) = mark.begin, mark.end
+    lo, hi = min(r1, r2), max(r1, r2) + 1
+    lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
+
+    def cont() -> Iterator[str]:
+        for idx, line in enumerate(lines, start=lo):
+            if idx == r1 and idx == r2:
+                yield decode(encode(line)[c1:c2])
+            elif idx == r1:
+                yield decode(encode(line)[c1:])
+            elif idx == r2:
+                yield decode(encode(line)[:c2])
+            else:
+                yield line
+
+    return linesep.join(cont())
 
 
 def win_close(nvim: Nvim, win: Window) -> None:

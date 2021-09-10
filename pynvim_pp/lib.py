@@ -5,7 +5,7 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from itertools import chain
 from time import monotonic
-from typing import Any, Awaitable, Callable, Iterator, TypeVar, cast
+from typing import Any, Awaitable, Callable, Iterator, Literal, TypeVar, cast
 from unicodedata import east_asian_width
 
 from pynvim import Nvim
@@ -21,6 +21,18 @@ _UNICODE_WIDTH_LOOKUP = {
 }
 
 _SPECIAL = {"\n", "\r"}
+
+
+def encode(text: str, encoding: Literal["UTF-8", "UTF-16"] = "UTF-8") -> bytes:
+    return text.encode(encoding, errors="surrogateescape")
+
+
+def decode(btext: bytes, encoding: Literal["UTF-8", "UTF-16"] = "UTF-8") -> str:
+    return btext.decode(encoding, errors="surrogateescape")
+
+
+def recode(text: str) -> str:
+    return text.encode("UTF-8", errors="ignore").decode("UTF-8")
 
 
 def display_width(text: str, tabsize: int) -> int:
