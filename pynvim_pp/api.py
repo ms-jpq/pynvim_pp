@@ -216,26 +216,31 @@ def buf_del_extmarks(
         nvim.api.buf_del_extmark(buf, id, mark.idx)
 
 
-def extmark_text(
-    nvim: Nvim, buf: Buffer, mark: ExtMark, linesep: Literal["\r\n", "\n", "\r", None]
-) -> str:
-    linesep = linesep or buf_linefeed(nvim, buf=buf)
-    (r1, c1), (r2, c2) = mark.begin, mark.end
-    lo, hi = min(r1, r2), max(r1, r2) + 1
-    lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
+def extmarks_text(
+    nvim: Nvim, buf: Buffer, marks: Iterable[ExtMark]
+) -> Mapping[ExtMark, str]:
+    linesep = buf_linefeed(nvim, buf=buf)
 
-    def cont() -> Iterator[str]:
-        for idx, line in enumerate(lines, start=lo):
-            if idx == r1 and idx == r2:
-                yield decode(encode(line)[c1:c2])
-            elif idx == r1:
-                yield decode(encode(line)[c1:])
-            elif idx == r2:
-                yield decode(encode(line)[:c2])
-            else:
-                yield line
+    def cont() -> Iterator[Tuple[ExtMark, str]]:
+        for mark in marks:
+            (r1, c1), (r2, c2) = mark.begin, mark.end
+            lo, hi = min(r1, r2), max(r1, r2) + 1
+            lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
 
-    return linesep.join(cont())
+            def cont() -> Iterator[str]:
+                for idx, line in enumerate(lines, start=lo):
+                    if idx == r1 and idx == r2:
+                        yield decode(encode(line)[c1:c2])
+                    elif idx == r1:
+                        yield decode(encode(line)[c1:])
+                    elif idx == r2:
+                        yield decode(encode(line)[:c2])
+                    else:
+                        yield line
+
+            yield mark, linesep.join(cont())
+
+    return {mark: text for mark, text in cont()}
 
 
 def win_close(nvim: Nvim, win: Window) -> None:
