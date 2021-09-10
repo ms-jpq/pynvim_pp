@@ -5,12 +5,13 @@ from concurrent.futures import Executor
 from os import getpid, getppid, kill
 from queue import SimpleQueue
 from signal import SIGTERM
+from string import Template
+from textwrap import dedent
 from time import sleep
 from typing import Any, Awaitable, MutableMapping, Protocol, Sequence
 
 from pynvim import Nvim
 
-from .consts import linesep
 from .logging import log, with_suppress
 from .rpc import RpcCallable, RpcMsg, nil_handler
 
@@ -27,6 +28,15 @@ class Client(Protocol):
     @abstractmethod
     def wait(self, nvim: Nvim) -> int:
         ...
+
+
+def _on_err(name: str, args: Sequence[Any], error: Exception) -> None:
+    tpl = """
+    ERROR IN RPC FOR :: ${name} :: ${args}
+    ${error}
+    """
+    msg = Template(dedent(tpl)).substitute(name=name, args=args, error=error)
+    log.exception("%s", msg)
 
 
 class BasicClient(Client):
@@ -54,8 +64,7 @@ class BasicClient(Client):
                 try:
                     await aw
                 except Exception as e:
-                    fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
-                    log.exception(fmt, name, args, e)
+                    _on_err(name, args=args, error=e)
 
         fut = run_coroutine_threadsafe(forever(), loop=loop)
         return fut.result()
@@ -66,8 +75,7 @@ def run_client(nvim: Nvim, pool: Executor, client: Client) -> int:
         try:
             return client.on_msg(nvim, (name, args))
         except Exception as e:
-            fmt = f"ERROR IN RPC FOR: %s - %s{linesep}%s"
-            log.exception(fmt, name, args, e)
+            _on_err(name, args=args, error=e)
 
     @with_suppress()
     def main() -> int:

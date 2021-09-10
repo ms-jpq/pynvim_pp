@@ -10,7 +10,6 @@ from unicodedata import east_asian_width
 
 from pynvim import Nvim
 
-from .consts import linesep
 from .logging import with_suppress
 
 _T = TypeVar("_T")
@@ -23,11 +22,11 @@ _UNICODE_WIDTH_LOOKUP = {
 _SPECIAL = {"\n", "\r"}
 
 
-def encode(text: str, encoding: Literal["UTF-8", "UTF-16"] = "UTF-8") -> bytes:
+def encode(text: str, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> bytes:
     return text.encode(encoding, errors="surrogateescape")
 
 
-def decode(btext: bytes, encoding: Literal["UTF-8", "UTF-16"] = "UTF-8") -> str:
+def decode(btext: bytes, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> str:
     return btext.decode(encoding, errors="surrogateescape")
 
 
@@ -108,7 +107,7 @@ def write(
         nvim.api.echo((a,), True, {})
     else:
         write = nvim.api.err_write if error else nvim.api.out_write
-        write(msg + linesep)
+        write(msg + "\n")
 
 
 def awrite(
