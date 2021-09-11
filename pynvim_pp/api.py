@@ -217,30 +217,6 @@ def buf_del_extmarks(
         nvim.api.buf_del_extmark(buf, id, mark.idx)
 
 
-def extmarks_text(
-    nvim: Nvim, buf: Buffer, marks: Iterable[ExtMark]
-) -> Iterator[Tuple[ExtMark, str]]:
-    linesep = buf_linefeed(nvim, buf=buf)
-    for mark in marks:
-        with suppress(NvimError):
-            (r1, c1), (r2, c2) = mark.begin, mark.end
-            lo, hi = min(r1, r2), max(r1, r2) + 1
-            lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
-
-            def cont() -> Iterator[str]:
-                for idx, line in enumerate(lines, start=lo):
-                    if idx == r1 and idx == r2:
-                        yield decode(encode(line)[c1:c2])
-                    elif idx == r1:
-                        yield decode(encode(line)[c1:])
-                    elif idx == r2:
-                        yield decode(encode(line)[:c2])
-                    else:
-                        yield line
-
-            yield mark, linesep.join(cont())
-
-
 def win_close(nvim: Nvim, win: Window) -> None:
     nvim.api.win_close(win, True)
 
@@ -306,11 +282,40 @@ def buf_set_lines(
     nvim.api.buf_set_lines(buf, lo, hi, True, lines)
 
 
+def buf_get_text(nvim: Nvim, buf: Buffer, begin: NvimPos, end: NvimPos) -> str:
+    (r1, c1), (r2, c2) = begin, end
+    lo, hi = min(r1, r2), max(r1, r2) + 1
+    lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
+    linesep = buf_linefeed(nvim, buf=buf)
+
+    def cont() -> Iterator[str]:
+        for idx, line in enumerate(lines, start=lo):
+            if idx == r1 and idx == r2:
+                yield decode(encode(line)[c1:c2])
+            elif idx == r1:
+                yield decode(encode(line)[c1:])
+            elif idx == r2:
+                yield decode(encode(line)[:c2])
+            else:
+                yield line
+
+    return linesep.join(cont())
+
+
 def buf_set_text(
     nvim: Nvim, buf: Buffer, begin: NvimPos, end: NvimPos, text: Sequence[str]
 ) -> None:
     (r1, c1), (r2, c2) = begin, end
     nvim.api.buf_set_text(buf, r1, c1, r2, c2, text)
+
+
+def extmarks_text(
+    nvim: Nvim, buf: Buffer, marks: Iterable[ExtMark]
+) -> Iterator[Tuple[ExtMark, str]]:
+    for mark in marks:
+        with suppress(NvimError):
+            text = buf_get_text(nvim, buf=buf, begin=mark.begin, end=mark.end)
+            yield mark, text
 
 
 def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> NvimPos:
