@@ -59,39 +59,45 @@ class RpcCallable(Generic[_T]):
 RpcSpec = Tuple[str, RpcCallable[Any]]
 
 
-def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
+def _new_lua_func(atomic: Atomic, chan: int, handler: RpcCallable[Any]) -> None:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
+
     if handler._schedule:
-        lua = f"""
-        (function()
-          _G[[[{handler._namespace}]]] = _G[[[{handler._namespace}]]] or {{}}
-          _G[[[{handler._namespace}]]][[[{handler.name}]]] = function(...)
-            local args = {{...}}
+        lua = """
+        (function(op, chan, ns, name)
+          _G[ns] = _G[ns] or {}
+          _G[ns][name] = function(...)
+            local args = {...}
             vim.schedule(function()
-              return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{unpack(args)}}}})
+              return vim.api.nvim_call_function(op, vim.tbl_flatten{{chan, name}, args})
             end)
           end
-        end)()
+        end)(...)
         """
     else:
-        lua = f"""
-        (function()
-          _G[[[{handler._namespace}]]] = _G[[[{handler._namespace}]]] or {{}}
-          _G[[[{handler._namespace}]]][[[{handler.name}]]] = function(...)
-            return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
+        lua = """
+        (function(op, chan, ns, name)
+          _G[ns] = _G[ns] or {}
+          _G[ns][name] = function(...)
+            local args = {...}
+            return vim.api.nvim_call_function(op, vim.tbl_flatten{{chan, name}, args})
           end
-        end)()
+        end)(...)
         """
-    return dedent(lua).lstrip()
+
+    atomic.execute_lua(
+        lua,
+        (op, chan, handler._namespace, handler.name),
+    )
 
 
-def _new_viml_func(handler: RpcCallable[Any]) -> str:
+def _new_viml_func(atomic: Atomic, handler: RpcCallable[Any]) -> None:
     viml = f"""
     function! {handler.name}(...)
-      return luaeval('{handler.name}(...)', [a:000])
+      return nvim_execute_lua('_G["{handler._namespace}"]["{handler.name}"](...)', a:000)
     endfunction
     """
-    return dedent(viml).lstrip()
+    atomic.command(viml)
 
 
 def _name_gen(fn: Callable[..., Any]) -> str:
@@ -132,8 +138,8 @@ class RPC:
         specs: MutableSequence[RpcSpec] = []
         while self._handlers:
             name, handler = self._handlers.popitem()
-            atomic.call_function("luaeval", (_new_lua_func(chan, handler=handler), ()))
-            atomic.command(_new_viml_func(handler=handler))
+            _new_lua_func(atomic, chan=chan, handler=handler)
+            _new_viml_func(atomic, handler=handler)
             specs.append((name, handler))
 
         return atomic, specs
