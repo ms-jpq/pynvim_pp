@@ -60,33 +60,31 @@ RpcSpec = Tuple[str, RpcCallable[Any]]
 
 def _new_lua_func(atomic: Atomic, chan: int, handler: RpcCallable[Any]) -> None:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
+    lua = """
+    (function(sch, op, chan, ns, name)
+      _G[ns] = _G[ns] or {}
+      _G[ns][name] = function(...)
+        local args = {...}
 
-    if handler._schedule:
-        lua = """
-        (function(op, chan, ns, name)
-          _G[ns] = _G[ns] or {}
-          _G[ns][name] = function(...)
-            local args = {...}
-            vim.schedule(function()
-              return vim.api.nvim_call_function(op, vim.tbl_flatten{{chan, name}, args})
-            end)
-          end
-        end)(...)
-        """
-    else:
-        lua = """
-        (function(op, chan, ns, name)
-          _G[ns] = _G[ns] or {}
-          _G[ns][name] = function(...)
-            local args = {...}
-            return vim.api.nvim_call_function(op, vim.tbl_flatten{{chan, name}, args})
-          end
-        end)(...)
-        """
+        local fn = function()
+          return vim.api.nvim_call_function(
+            op,
+            vim.tbl_flatten {{chan, name}, args}
+          )
+        end
+
+        if sch then
+          return vim.schedule(fn)
+        else
+          return fn()
+        end
+      end
+    end)(...)
+    """
 
     atomic.execute_lua(
         lua,
-        (op, chan, handler._namespace, handler.name),
+        (handler._schedule, op, chan, handler._namespace, handler.name),
     )
 
 
