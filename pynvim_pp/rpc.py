@@ -64,8 +64,8 @@ def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     if handler._schedule:
         lua = f"""
         (function()
-          {handler._namespace} = {handler._namespace} or {{}}
-          {handler._namespace}.{handler.name} = function(...)
+          _G[[[{handler._namespace}]]] = _G[[[{handler._namespace}]]] or {{}}
+          _G[[[{handler._namespace}]]][[[{handler.name}]]] = function(...)
             local args = {{...}}
             vim.schedule(function()
               return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{unpack(args)}}}})
@@ -76,8 +76,8 @@ def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     else:
         lua = f"""
         (function()
-          {handler._namespace} = {handler._namespace} or {{}}
-          {handler._namespace}.{handler.name} = function(...)
+          _G[[[{handler._namespace}]]] = _G[[[{handler._namespace}]]] or {{}}
+          _G[[[{handler._namespace}]]][[[{handler.name}]]] = function(...)
             return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
           end
         end)()
