@@ -64,8 +64,10 @@ def _new_lua_func(atomic: Atomic, chan: int, handler: RpcCallable[Any]) -> None:
     (function(sch, op, chan, ns, name)
       _G[ns] = _G[ns] or {}
       _G[ns][name] = function(...)
+        local args = {chan, name, ...}
+
         local fn = function()
-          return vim.api.nvim_call_function(op, {chan, name, ...})
+          return vim.api.nvim_call_function(op, args)
         end
 
         if sch then
