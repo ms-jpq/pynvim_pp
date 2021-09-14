@@ -30,6 +30,7 @@ RpcMsg = Tuple[str, Sequence[Sequence[Any]]]
 class RpcCallable(Generic[_T]):
     def __init__(
         self,
+        namespace: str,
         name: str,
         blocking: bool,
         schedule: bool,
@@ -39,14 +40,15 @@ class RpcCallable(Generic[_T]):
         if self.is_async and blocking:
             raise ValueError()
         else:
-            self.name, self.is_blocking, self.schedule, self._handler = (
-                name,
-                blocking,
-                schedule,
-                handler,
-            )
+            self._namespace = namespace
+            self.name = name
+            self.is_blocking = blocking
+            self._schedule = schedule
+            self._handler = handler
 
-    def __call__(self, nvim: Nvim, *args: Any, **kwargs: Any) -> Union[_T, Awaitable[_T]]:
+    def __call__(
+        self, nvim: Nvim, *args: Any, **kwargs: Any
+    ) -> Union[_T, Awaitable[_T]]:
         if self.is_async:
             aw = cast(Awaitable[_T], self._handler(nvim, *args, **kwargs))
             return aw
@@ -59,10 +61,11 @@ RpcSpec = Tuple[str, RpcCallable[Any]]
 
 def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     op = "rpcrequest" if handler.is_blocking else "rpcnotify"
-    if handler.schedule:
+    if handler._schedule:
         lua = f"""
         (function()
-          {handler.name} = function(...)
+          {handler._namespace} = {handler._namespace} or {{}}
+          {handler._namespace}.{handler.name} = function(...)
             local args = {{...}}
             vim.schedule(function()
               return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{unpack(args)}}}})
@@ -73,7 +76,8 @@ def _new_lua_func(chan: int, handler: RpcCallable[Any]) -> str:
     else:
         lua = f"""
         (function()
-          {handler.name} = function(...)
+          {handler._namespace} = {handler._namespace} or {{}}
+          {handler._namespace}.{handler.name} = function(...)
             return vim.api.nvim_call_function("{op}", {{{chan}, "{handler.name}", {{...}}}})
           end
         end)()
@@ -96,9 +100,10 @@ def _name_gen(fn: Callable[..., Any]) -> str:
 
 class RPC:
     def __init__(
-        self, name_gen: Callable[[Callable[..., Any]], str] = _name_gen
+        self, namespace: str, name_gen: Callable[[Callable[..., Any]], str] = _name_gen
     ) -> None:
         self._handlers: MutableMapping[str, RpcCallable[Any]] = {}
+        self._namespace = namespace
         self._name_gen = name_gen
 
     def __call__(
@@ -111,7 +116,11 @@ class RPC:
             c_name = name if name else self._name_gen(handler)
 
             wraped = RpcCallable(
-                name=c_name, blocking=blocking, schedule=schedule, handler=handler
+                namespace=self._namespace,
+                name=c_name,
+                blocking=blocking,
+                schedule=schedule,
+                handler=handler,
             )
             self._handlers[wraped.name] = wraped
             return wraped
@@ -134,5 +143,11 @@ def nil_handler(name: str) -> RpcCallable:
     def handler(nvim: Nvim, *args: Any, **kwargs: Any) -> None:
         log.warn("MISSING RPC HANDLER FOR: %s - %s - %s", name, args, kwargs)
 
-    return RpcCallable(name=name, blocking=True, schedule=False, handler=handler)
-
+    nil = RpcCallable(
+        namespace="",
+        name=name,
+        blocking=True,
+        schedule=False,
+        handler=handler,
+    )
+    return nil
