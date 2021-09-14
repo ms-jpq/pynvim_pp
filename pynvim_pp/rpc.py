@@ -23,7 +23,7 @@ from .logging import log
 
 _T = TypeVar("_T")
 
-RpcMsg = Tuple[str, Sequence[Sequence[Any]]]
+RpcMsg = Tuple[str, Sequence[Any]]
 
 
 class RpcCallable(Generic[_T]):

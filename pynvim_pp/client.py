@@ -46,7 +46,7 @@ class BasicClient(Client):
         self._q: SimpleQueue = SimpleQueue()
 
     def on_msg(self, nvim: Nvim, msg: RpcMsg) -> Any:
-        name, (args, *_) = msg
+        name, args = msg
         handler = self._handlers.get(name, nil_handler(name))
         ret = handler(nvim, *args)
         if isinstance(ret, Awaitable):
