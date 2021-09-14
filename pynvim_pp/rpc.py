@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from asyncio.coroutines import iscoroutinefunction
-from textwrap import dedent
 from typing import (
     Any,
     Awaitable,
