@@ -261,7 +261,7 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
 
 
 def buf_commentstr(nvim: Nvim, buf: Buffer) -> Tuple[str, str]:
-    commentstr: Optional[str] = buf_get_option(nvim, buf=buf, key="filetype")
+    commentstr: Optional[str] = buf_get_option(nvim, buf=buf, key="commentstring")
     if not commentstr:
         return "", ""
     else:
