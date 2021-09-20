@@ -260,6 +260,16 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
     return filetype
 
 
+def buf_commentstr(nvim: Nvim, buf: Buffer) -> Tuple[str, str]:
+    commentstr: Optional[str] = buf_get_option(nvim, buf=buf, key="filetype")
+    if not commentstr:
+        return "", ""
+    else:
+        lhs, sep, rhs = commentstr.partition("%s")
+        assert sep
+        return lhs, rhs
+
+
 class LFfmt(Enum):
     dos = "\r\n"
     unix = "\n"
