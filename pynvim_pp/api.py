@@ -45,8 +45,12 @@ def get_cwd(nvim: Nvim) -> PurePath:
     return PurePath(cwd)
 
 
-def chdir(nvim: Nvim, path: PurePath) -> None:
-    nvim.api.set_current_dir(normcase(path))
+def chdir(nvim: Nvim, path: PurePath, history: bool = True) -> None:
+    if history:
+        focus = nvim.funcs.fnameescape(normcase(path))
+        nvim.command(f"chdir {focus}")
+    else:
+        nvim.api.set_current_dir(normcase(path))
 
 
 def iter_rtps(nvim: Nvim) -> Sequence[Path]:
