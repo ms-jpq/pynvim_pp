@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import takewhile
 from typing import AbstractSet, MutableSequence
 
 
@@ -14,6 +15,8 @@ class SplitCtx:
     word_rhs: str
     syms_lhs: str
     syms_rhs: str
+    ws_lhs: str
+    ws_rhs: str
 
 
 def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
@@ -58,6 +61,9 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
 
     w_lhs, w_rhs = "".join(reversed(word_lhs)), "".join(word_rhs)
 
+    ws_lhs = "".join(reversed(tuple(takewhile(lambda c: c.isspace(), reversed(lhs)))))
+    ws_rhs = "".join(takewhile(lambda c: c.isspace(), rhs))
+
     ctx = SplitCtx(
         lhs=lhs,
         rhs=rhs,
@@ -65,6 +71,7 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
         word_rhs=w_rhs,
         syms_lhs="".join(reversed(syms_lhs)) + w_lhs,
         syms_rhs=w_rhs + "".join(syms_rhs),
+        ws_lhs=ws_lhs,
+        ws_rhs=ws_rhs,
     )
     return ctx
-
