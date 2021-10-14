@@ -47,8 +47,8 @@ def get_cwd(nvim: Nvim) -> PurePath:
 
 def chdir(nvim: Nvim, path: PurePath, history: bool = True) -> None:
     if history:
-        focus = nvim.funcs.fnameescape(normcase(path))
-        nvim.command(f"chdir {focus}")
+        escaped = nvim.funcs.fnameescape(normcase(path))
+        nvim.command(f"chdir {escaped}")
     else:
         nvim.api.set_current_dir(normcase(path))
 
