@@ -1,8 +1,9 @@
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum
-from os.path import expanduser, normcase
+from os.path import normcase
 from pathlib import Path, PurePath
+from string import ascii_uppercase
 from typing import (
     Any,
     Iterable,
@@ -21,7 +22,7 @@ from msgpack import packb
 from pynvim.api import Buffer, Nvim, Tabpage, Window
 from pynvim.api.common import NvimError
 
-from .lib import decode, encode
+from .lib import decode, encode, resolve_path
 
 NvimPos = Tuple[int, int]
 
@@ -40,9 +41,9 @@ def new_buf(nvim: Nvim, nr: int) -> Buffer:
     return buf
 
 
-def get_cwd(nvim: Nvim) -> PurePath:
+def get_cwd(nvim: Nvim) -> Path:
     cwd = normcase(nvim.funcs.getcwd())
-    return PurePath(cwd)
+    return Path(cwd)
 
 
 def chdir(nvim: Nvim, path: PurePath, history: bool = True) -> None:
@@ -55,7 +56,9 @@ def chdir(nvim: Nvim, path: PurePath, history: bool = True) -> None:
 
 def iter_rtps(nvim: Nvim) -> Sequence[Path]:
     return tuple(
-        Path(normcase(expanduser(path))) for path in nvim.api.list_runtime_paths()
+        path
+        for p in nvim.api.list_runtime_paths()
+        if (path := resolve_path(None, path=p))
     )
 
 
@@ -94,6 +97,15 @@ def set_cur_win(nvim: Nvim, win: Window) -> None:
 def cur_buf(nvim: Nvim) -> Buffer:
     buf: Buffer = nvim.api.get_current_buf()
     return buf
+
+
+def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, PurePath]]:
+    if nvim.funcs.has("nvim-0.6"):
+        cwd = get_cwd(nvim)
+        for mark_id in ascii_uppercase:
+            _, _, _, path = nvim.api.get_mark(mark_id, {})
+            if path and (resolved := resolve_path(cwd, path=path)):
+                yield mark_id, resolved
 
 
 def list_tabs(nvim: Nvim) -> Sequence[Tabpage]:

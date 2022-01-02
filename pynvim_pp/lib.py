@@ -4,9 +4,13 @@ from concurrent.futures import Future, InvalidStateError
 from contextlib import contextmanager, suppress
 from functools import partial
 from itertools import chain
+from os import PathLike
+from os.path import normcase
+from pathlib import Path, PurePath
 from time import monotonic
-from typing import Any, Awaitable, Callable, Iterator, Literal, TypeVar, cast
+from typing import Any, Awaitable, Callable, Iterator, Literal, Optional, TypeVar, cast
 from unicodedata import east_asian_width
+from urllib.parse import urlsplit
 
 from pynvim import Nvim
 
@@ -131,3 +135,33 @@ def bench(
     elapsed = t2 - t1
     if elapsed >= threshold:
         write(nvim, *args, round(elapsed, precision))
+
+
+def _expanduser(path: Path) -> Path:
+    try:
+        resolved = path.expanduser()
+    except RuntimeError:
+        return path
+    else:
+        return resolved
+
+
+def resolve_path(cwd: Optional[Path], path: PathLike) -> Optional[Path]:
+    try:
+        parsed = urlsplit(normcase(path))
+    except ValueError:
+        return None
+    else:
+        if parsed.scheme not in {"", "file"}:
+            return None
+        else:
+            safe_path = Path(normcase(parsed.path))
+
+            if safe_path.is_absolute():
+                return safe_path
+            elif (resolved := _expanduser(safe_path)) != safe_path:
+                return resolved
+            elif cwd:
+                return cwd / path
+            else:
+                return None
