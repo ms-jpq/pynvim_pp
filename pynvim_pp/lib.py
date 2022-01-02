@@ -6,9 +6,19 @@ from functools import partial
 from itertools import chain
 from os import PathLike
 from os.path import normcase
-from pathlib import Path, PurePath
+from pathlib import Path
 from time import monotonic
-from typing import Any, Awaitable, Callable, Iterator, Literal, Optional, TypeVar, cast
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Iterator,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+)
 from unicodedata import east_asian_width
 from urllib.parse import urlsplit
 
@@ -146,7 +156,7 @@ def _expanduser(path: Path) -> Path:
         return resolved
 
 
-def resolve_path(cwd: Optional[Path], path: PathLike) -> Optional[Path]:
+def resolve_path(cwd: Optional[Path], path: Union[PathLike, str]) -> Optional[Path]:
     try:
         parsed = urlsplit(normcase(path))
     except ValueError:
