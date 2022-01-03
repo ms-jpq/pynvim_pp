@@ -7,6 +7,7 @@ from .atomic import Atomic
 @dataclass(frozen=True)
 class HLgroup:
     name: str
+    default: bool = True
     cterm: AbstractSet[str] = frozenset()
     ctermfg: Optional[int] = None
     ctermbg: Optional[int] = None
@@ -18,6 +19,7 @@ def highlight(*groups: HLgroup) -> Atomic:
     atomic = Atomic()
     for group in groups:
         name = group.name
+        df = "default" if group.default else ""
         _cterm = ",".join(group.cterm) or "NONE"
         cterm = f"cterm={_cterm}"
         ctermfg = f"ctermfg={group.ctermfg}" if group.ctermfg else ""
@@ -25,16 +27,16 @@ def highlight(*groups: HLgroup) -> Atomic:
         guifg = f"guifg={group.guifg}" if group.guifg else ""
         guibg = f"guibg={group.guibg}" if group.guibg else ""
 
-        hl_line = f"highlight {name} {cterm} {ctermfg} {ctermbg} {guifg} {guibg}"
+        hl_line = f"highlight {df} {name} {cterm} {ctermfg} {ctermbg} {guifg} {guibg}"
         atomic.command(hl_line)
 
     return atomic
 
 
-def hl_link(**links: str) -> Atomic:
+def hl_link(default: bool, **links: str) -> Atomic:
+    df = "default" if default else ""
     atomic = Atomic()
     for src, dest in links.items():
-        link = f"highlight link {src} {dest}"
+        link = f"highlight {df} link {src} {dest}"
         atomic.command(link)
     return atomic
-
