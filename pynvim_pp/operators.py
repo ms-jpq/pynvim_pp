@@ -51,7 +51,8 @@ def set_visual_selection(
 
 def p_indent(line: str, tabsize: int) -> int:
     ws = {*whitespace}
-    for idx, char in enumerate(line.expandtabs(tabsize), start=1):
+    spaces = " " * tabsize
+    for idx, char in enumerate(line.replace("\t", spaces), start=1):
         if char not in ws:
             return idx - 1
     else:
