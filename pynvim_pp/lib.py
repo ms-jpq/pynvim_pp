@@ -4,9 +4,10 @@ from concurrent.futures import Future, InvalidStateError
 from contextlib import contextmanager, suppress
 from functools import partial
 from itertools import chain
-from os import PathLike
+from os import PathLike, name
 from os.path import normcase
 from pathlib import Path
+from string import ascii_lowercase
 from time import monotonic
 from typing import (
     Any,
@@ -156,22 +157,31 @@ def _expanduser(path: Path) -> Path:
         return resolved
 
 
-def resolve_path(cwd: Optional[Path], path: Union[PathLike, str]) -> Optional[Path]:
+def _safe_path(path: Union[PathLike, str]) -> Optional[Path]:
+    p = normcase(path)
     try:
-        parsed = urlsplit(normcase(path))
+        parsed = urlsplit(p)
     except ValueError:
         return None
     else:
-        if parsed.scheme not in {"", "file"}:
-            return None
-        else:
+        scheme = parsed.scheme.casefold()
+        if scheme in {"", "file"}:
             safe_path = Path(normcase(parsed.path))
+            return safe_path
+        elif name == "nt" and scheme in {*ascii_lowercase}:
+            return Path(p)
+        else:
+            return None
 
-            if safe_path.is_absolute():
-                return safe_path
-            elif (resolved := _expanduser(safe_path)) != safe_path:
-                return resolved
-            elif cwd:
-                return cwd / path
-            else:
-                return None
+
+def resolve_path(cwd: Optional[Path], path: Union[PathLike, str]) -> Optional[Path]:
+    if not (safe_path := _safe_path(path)):
+        return None
+    elif safe_path.is_absolute():
+        return safe_path
+    elif (resolved := _expanduser(safe_path)) != safe_path:
+        return resolved
+    elif cwd:
+        return cwd / path
+    else:
+        return None
