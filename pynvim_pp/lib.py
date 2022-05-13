@@ -160,7 +160,7 @@ def _expanduser(path: Path) -> Path:
 def _safe_path(path: Union[PathLike, str]) -> Optional[Path]:
     p = normcase(path)
     try:
-        parsed = urlsplit(p)
+        parsed = urlsplit(p, allow_fragments=False)
     except ValueError:
         return None
     else:
