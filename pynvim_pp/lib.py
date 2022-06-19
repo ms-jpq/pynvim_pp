@@ -1,5 +1,4 @@
 from asyncio import AbstractEventLoop
-from asyncio.events import get_running_loop
 from concurrent.futures import Future, InvalidStateError
 from contextlib import contextmanager, suppress
 from functools import partial
@@ -92,7 +91,7 @@ def threadsafe_call(nvim: Nvim, fn: Callable[..., _T], *args: Any, **kwargs: Any
 async def async_call(
     nvim: Nvim, fn: Callable[..., _T], *args: Any, **kwargs: Any
 ) -> _T:
-    loop = get_running_loop()
+    assert isinstance(nvim.loop, AbstractEventLoop)
     fut: Future = Future()
 
     def cont() -> None:
@@ -106,7 +105,7 @@ async def async_call(
                 fut.set_result(ret)
 
     nvim.async_call(cont)
-    return await loop.run_in_executor(None, fut.result)
+    return await nvim.loop.run_in_executor(None, fut.result)
 
 
 def write(
