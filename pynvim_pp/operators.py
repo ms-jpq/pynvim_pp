@@ -40,12 +40,12 @@ def set_visual_selection(
     if reverse:
         atomic.win_set_cursor(win, (r2 + 1, c2))
         atomic.command(f"norm! {mode}")
-        atomic.win_set_cursor(win, (r1 + 1, c1))
+        atomic.win_set_cursor(win, (r1 + 1, c1 + 1))
 
     else:
         atomic.win_set_cursor(win, (r1 + 1, c1))
         atomic.command(f"norm! {mode}")
-        atomic.win_set_cursor(win, (r2 + 1, c2))
+        atomic.win_set_cursor(win, (r2 + 1, c2 + 1))
     atomic.commit(nvim)
 
 
