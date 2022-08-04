@@ -317,7 +317,7 @@ def buf_get_text(
 ) -> Sequence[str]:
     (r1, c1), (r2, c2) = begin, end
     if nvim_has(nvim, "nvim-0.7"):
-        lines = nvim.api.buf_get_text(buf, r1, c1, r2, c2, {})
+        lines: Sequence[str] = nvim.api.buf_get_text(buf, r1, c1, r2, c2, {})
         return lines
     else:
         lo, hi = min(r1, r2), max(r1, r2) + 1
@@ -347,10 +347,11 @@ def buf_set_text(
 def extmarks_text(
     nvim: Nvim, buf: Buffer, marks: Iterable[ExtMark]
 ) -> Iterator[Tuple[ExtMark, str]]:
+    linesep = buf_linefeed(nvim, buf=buf)
     for mark in marks:
         with suppress(NvimError):
-            text = buf_get_text(nvim, buf=buf, begin=mark.begin, end=mark.end)
-            yield mark, text
+            lines = buf_get_text(nvim, buf=buf, begin=mark.begin, end=mark.end)
+            yield mark, linesep.join(lines)
 
 
 def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> NvimPos:

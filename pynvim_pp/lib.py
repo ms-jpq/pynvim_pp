@@ -38,7 +38,7 @@ _SPECIAL = {"\n", "\r"}
 
 @lru_cache(maxsize=None)
 def nvim_has(nvim: Nvim, feature: str) -> bool:
-    return nvim.funcs.has(feature)
+    return bool(nvim.funcs.has(feature))
 
 
 def encode(text: str, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> bytes:
