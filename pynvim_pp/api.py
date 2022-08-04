@@ -210,7 +210,7 @@ def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
         mark = ExtMark(
             idx=idx,
             begin=(r1, c1),
-            end=(details["end_row"], details["end_col"]),
+            end=(details["end_row"], details["end_col"] + 1),
             meta=details,
         )
         yield mark
@@ -330,7 +330,7 @@ def buf_get_text(
                 elif idx == r1:
                     yield decode(encode(line)[c1:])
                 elif idx == r2:
-                    yield decode(encode(line)[:c2])
+                    yield decode(encode(line)[: max(0, c2 - 1)])
                 else:
                     yield line
 
