@@ -14,7 +14,7 @@ from .api import (
     win_set_option,
     win_set_var,
 )
-from .lib import display_width
+from .lib import display_width, nvim_has
 
 FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
 
@@ -93,7 +93,7 @@ def _open_float_win(
         "col": col,
         "focusable": focusable,
     }
-    if nvim.funcs.has("nvim-0.5"):
+    if nvim_has(nvim, "nvim-0.5"):
         opts.update(noautocmd=True, border=border)
 
     win: Window = nvim.api.open_win(buf, True, opts)
@@ -110,7 +110,7 @@ def open_float_win(
 ) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
-    if not nvim.funcs.has("nvim-0.5"):
+    if not nvim_has(nvim, "nvim-0.5"):
         border = None
 
     t_width, t_height = nvim.options["columns"], nvim.options["lines"]

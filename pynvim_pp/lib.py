@@ -1,7 +1,7 @@
 from asyncio import AbstractEventLoop
 from concurrent.futures import Future, InvalidStateError
 from contextlib import contextmanager, suppress
-from functools import partial
+from functools import lru_cache, partial
 from itertools import chain
 from os import PathLike, name
 from os.path import normcase
@@ -34,6 +34,11 @@ _UNICODE_WIDTH_LOOKUP = {
 }
 
 _SPECIAL = {"\n", "\r"}
+
+
+@lru_cache(maxsize=None)
+def nvim_has(nvim: Nvim, feature: str) -> bool:
+    return nvim.funcs.has(feature)
 
 
 def encode(text: str, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> bytes:
@@ -116,7 +121,7 @@ def write(
     error: bool = False,
 ) -> None:
     msg = sep.join(str(v) for v in chain((val,), vals)).rstrip()
-    if nvim.funcs.has("nvim-0.5"):
+    if nvim_has(nvim, "nvim-0.5"):
         a = (msg, "ErrorMsg") if error else (msg,)
         nvim.api.echo((a,), True, {})
     else:
