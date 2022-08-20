@@ -320,6 +320,7 @@ def buf_get_text(
         lines: Sequence[str] = nvim.api.buf_get_text(buf, r1, c1, r2, c2, {})
         return lines
     else:
+        c2 = max(0, c2 - 1)
         lo, hi = min(r1, r2), max(r1, r2) + 1
         lines = buf_get_lines(nvim, buf=buf, lo=lo, hi=hi)
 
@@ -330,7 +331,7 @@ def buf_get_text(
                 elif idx == r1:
                     yield decode(encode(line)[c1:])
                 elif idx == r2:
-                    yield decode(encode(line)[: max(0, c2 - 1)])
+                    yield decode(encode(line)[:c2])
                 else:
                     yield line
 
