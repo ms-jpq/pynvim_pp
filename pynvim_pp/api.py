@@ -210,7 +210,7 @@ def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
         mark = ExtMark(
             idx=idx,
             begin=(r1, c1),
-            end=(details["end_row"], details["end_col"] + 1),
+            end=(details["end_row"], details["end_col"]),
             meta=details,
         )
         yield mark
@@ -225,7 +225,7 @@ def buf_set_extmarks(
             **mark.meta,
             "id": mark.idx,
             "end_line": r2,
-            "end_col": c2,
+            "end_col": c2 + 1,
         }
         nvim.api.buf_set_extmark(buf, id, r1, c1, opts)
 
