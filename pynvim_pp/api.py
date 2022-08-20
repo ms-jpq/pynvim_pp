@@ -225,7 +225,7 @@ def buf_set_extmarks(
             **mark.meta,
             "id": mark.idx,
             "end_line": r2,
-            "end_col": c2 + 1,
+            "end_col": c2,
         }
         nvim.api.buf_set_extmark(buf, id, r1, c1, opts)
 
