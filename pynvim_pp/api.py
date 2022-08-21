@@ -42,13 +42,6 @@ class ExtMark(ExtMarkBase):
     end: NvimPos
 
 
-@dataclass(frozen=True)
-class Bookmark:
-    name: str
-    row: int
-    col: int
-
-
 def new_buf(nvim: Nvim, nr: int) -> Buffer:
     ext_id = nvim.metadata["types"]["Buffer"]["id"]
     buf = Buffer(nvim, (ext_id, packb(nr)))
@@ -122,13 +115,12 @@ def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, PurePath]]:
                 yield mark_id, resolved
 
 
-def list_local_bookmarks(nvim: Nvim) -> Mapping[Buffer, Bookmark]:
-    def cont() -> Iterator[Tuple[Buffer, Bookmark]]:
+def list_buf_bookmarks(nvim: Nvim, buf: Buffer) -> Mapping[str, NvimPos]:
+    def cont() -> Iterator[Tuple[str, NvimPos]]:
         if nvim_has(nvim, "nvim-0.6"):
             for mark_id in ascii_lowercase:
-                row, col, buf, _ = nvim.api.get_mark(mark_id, {})
-                bookmark = Bookmark(name=mark_id, row=row, col=col)
-                yield buf, bookmark
+                if mark := buf_get_mark(nvim, buf=buf, mark=mark_id):
+                    yield mark_id, mark
 
     return {b: m for b, m in cont()}
 
@@ -405,9 +397,12 @@ def extmarks_text(
             yield mark, linesep.join(lines)
 
 
-def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> NvimPos:
+def buf_get_mark(nvim: Nvim, buf: Buffer, mark: str) -> Optional[NvimPos]:
     row, col = nvim.api.buf_get_mark(buf, mark)
-    return row - 1, col
+    if (row, col) == (0, 0):
+        return None
+    else:
+        return row - 1, col
 
 
 def buf_set_mark(nvim: Nvim, buf: Buffer, mark: str, row: int, col: int) -> None:
