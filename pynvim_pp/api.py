@@ -106,7 +106,7 @@ def cur_buf(nvim: Nvim) -> Buffer:
     return buf
 
 
-def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, NvimPos, Buffer, PurePath]]:
+def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, int, NvimPos, PurePath]]:
     if nvim_has(nvim, "nvim-0.6"):
         cwd = get_cwd(nvim)
         for mark_id in ascii_uppercase:
@@ -114,7 +114,7 @@ def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, NvimPos, Buffer, PurePath]
             pos = row, col
             if pos != (0, 0):
                 if path and (resolved := resolve_path(cwd, path=path)):
-                    yield mark_id, pos, buf, resolved
+                    yield mark_id, buf, pos, resolved
 
 
 def list_buf_bookmarks(nvim: Nvim, buf: Buffer) -> Mapping[str, NvimPos]:
