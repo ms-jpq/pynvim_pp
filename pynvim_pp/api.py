@@ -28,11 +28,15 @@ NvimPos = Tuple[int, int]
 
 
 @dataclass(frozen=True)
-class ExtMark:
+class ExtMarkBase:
     idx: int
     begin: NvimPos
-    end: NvimPos
     meta: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class ExtMark(ExtMarkBase):
+    end: NvimPos
 
 
 def new_buf(nvim: Nvim, nr: int) -> Buffer:
@@ -202,11 +206,27 @@ def buf_set_var(nvim: Nvim, buf: Buffer, key: str, val: Any) -> None:
     nvim.api.buf_set_var(buf, key, val)
 
 
-def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
+def _buf_get_ext_marks(
+    nvim: Nvim, buf: Buffer, id: int
+) -> Sequence[Tuple[int, int, int, Mapping[str, Any]]]:
     marks: Sequence[
         Tuple[int, int, int, Mapping[str, Any]]
     ] = nvim.api.buf_get_extmarks(buf, id, 0, -1, {"details": True})
-    for idx, r1, c1, details in marks:
+    return marks
+
+
+def buf_get_extmarks_base(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMarkBase]:
+    for idx, r1, c1, details in _buf_get_ext_marks(nvim, buf=buf, id=id):
+        mark = ExtMarkBase(
+            idx=idx,
+            begin=(r1, c1),
+            meta=details,
+        )
+        yield mark
+
+
+def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
+    for idx, r1, c1, details in _buf_get_ext_marks(nvim, buf=buf, id=id):
         mark = ExtMark(
             idx=idx,
             begin=(r1, c1),
@@ -214,6 +234,15 @@ def buf_get_extmarks(nvim: Nvim, buf: Buffer, id: int) -> Iterator[ExtMark]:
             meta=details,
         )
         yield mark
+
+
+def buf_set_extmarks_base(
+    nvim: Nvim, buf: Buffer, id: int, marks: Iterable[ExtMarkBase]
+) -> None:
+    for mark in marks:
+        (r1, c1) = mark.begin
+        opts: Mapping[str, Union[str, int]] = {**mark.meta, "id": mark.idx}
+        nvim.api.buf_set_extmark(buf, id, r1, c1, opts)
 
 
 def buf_set_extmarks(
@@ -231,7 +260,7 @@ def buf_set_extmarks(
 
 
 def buf_del_extmarks(
-    nvim: Nvim, buf: Buffer, id: int, marks: Iterable[ExtMark]
+    nvim: Nvim, buf: Buffer, id: int, marks: Iterable[ExtMarkBase]
 ) -> None:
     for mark in marks:
         nvim.api.buf_del_extmark(buf, id, mark.idx)
