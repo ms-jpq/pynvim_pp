@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from os.path import normcase
 from pathlib import Path, PurePath
-from string import ascii_uppercase
+from string import ascii_lowercase, ascii_uppercase
 from typing import (
     Any,
     Iterable,
@@ -40,6 +40,13 @@ class ExtMarkBase:
 @dataclass(frozen=True)
 class ExtMark(ExtMarkBase):
     end: NvimPos
+
+
+@dataclass(frozen=True)
+class Bookmark:
+    name: str
+    row: int
+    col: int
 
 
 def new_buf(nvim: Nvim, nr: int) -> Buffer:
@@ -113,6 +120,17 @@ def list_bookmarks(nvim: Nvim) -> Iterator[Tuple[str, PurePath]]:
             _, _, _, path = nvim.api.get_mark(mark_id, {})
             if path and (resolved := resolve_path(cwd, path=path)):
                 yield mark_id, resolved
+
+
+def list_local_bookmarks(nvim: Nvim) -> Mapping[Buffer, Bookmark]:
+    def cont() -> Iterator[Tuple[Buffer, Bookmark]]:
+        if nvim_has(nvim, "nvim-0.6"):
+            for mark_id in ascii_lowercase:
+                row, col, buf, _ = nvim.api.get_mark(mark_id, {})
+                bookmark = Bookmark(name=mark_id, row=row, col=col)
+                yield buf, bookmark
+
+    return {b: m for b, m in cont()}
 
 
 def list_tabs(nvim: Nvim) -> Sequence[Tabpage]:
