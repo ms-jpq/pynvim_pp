@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    TypeVar,
     Union,
     cast,
 )
@@ -25,6 +26,8 @@ from pynvim.api.common import NvimError
 from .lib import decode, encode, nvim_has, resolve_path
 
 NvimPos = Tuple[int, int]
+
+_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -408,8 +411,8 @@ def create_buf(
 
 
 def ask_mc(
-    nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, Any]
-) -> Optional[Any]:
+    nvim: Nvim, question: str, answers: str, answer_key: Mapping[int, _T]
+) -> Optional[_T]:
     try:
         resp: Optional[int] = nvim.funcs.confirm(question, answers, 0)
     except NvimError:
