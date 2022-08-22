@@ -36,11 +36,10 @@ class _A:
         self._name, self._events, self._modifiers = name, events, modifiers
         self._parent = parent
 
-    def __lshift__(self, rhs: str) -> str:
+    def __lshift__(self, rhs: str) -> None:
         self._parent._autocmds[self._name] = _AuParams(
             events=self._events, modifiers=self._modifiers, rhs=rhs
         )
-        return self._name
 
 
 class AutoCMD:
