@@ -324,6 +324,11 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
     return filetype
 
 
+def buf_change_tick(nvim, buf: Buffer) -> int:
+    tick: int = nvim.api.buf_get_changedtick(buf)
+    return tick
+
+
 def buf_commentstr(nvim: Nvim, buf: Buffer) -> Tuple[str, str]:
     commentstr: Optional[str] = buf_get_option(nvim, buf=buf, key="commentstring")
     if not commentstr:
