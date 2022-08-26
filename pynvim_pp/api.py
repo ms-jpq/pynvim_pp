@@ -324,7 +324,7 @@ def buf_filetype(nvim: Nvim, buf: Buffer) -> str:
     return filetype
 
 
-def buf_change_tick(nvim, buf: Buffer) -> int:
+def buf_change_tick(nvim: Nvim, buf: Buffer) -> int:
     tick: int = nvim.api.buf_get_changedtick(buf)
     return tick
 
