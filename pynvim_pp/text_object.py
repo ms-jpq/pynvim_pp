@@ -3,8 +3,8 @@ from itertools import takewhile
 from typing import AbstractSet, MutableSequence
 
 
-def is_word(c: str, unifying_chars: AbstractSet[str]) -> bool:
-    return c.isalnum() or c in unifying_chars
+def is_word(unifying_chars: AbstractSet[str], chr: str) -> bool:
+    return chr.isalnum() or chr in unifying_chars
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class SplitCtx:
     ws_rhs: str
 
 
-def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
+def gen_split(unifying_chars: AbstractSet[str], lhs: str, rhs: str) -> SplitCtx:
     word_lhs: MutableSequence[str] = []
     syms_lhs: MutableSequence[str] = []
     word_rhs: MutableSequence[str] = []
@@ -27,7 +27,7 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
 
     encountered_sym = False
     for char in reversed(lhs):
-        is_w = is_word(char, unifying_chars=unifying_chars)
+        is_w = is_word(unifying_chars, chr=char)
         if char.isspace():
             break
         elif encountered_sym:
@@ -44,7 +44,7 @@ def gen_split(lhs: str, rhs: str, unifying_chars: AbstractSet[str]) -> SplitCtx:
 
     encountered_sym = False
     for char in rhs:
-        is_w = is_word(char, unifying_chars=unifying_chars)
+        is_w = is_word(unifying_chars, chr=char)
         if char.isspace():
             break
         elif encountered_sym:

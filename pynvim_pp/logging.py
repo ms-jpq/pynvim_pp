@@ -4,7 +4,7 @@ from pathlib import Path
 from sys import stdout
 from typing import Iterator
 
-log = getLogger(Path(__file__).resolve().parent.name)
+log = getLogger(Path(__file__).resolve(strict=True).parent.name)
 
 
 class _Handler(StreamHandler):
@@ -26,10 +26,8 @@ log.setLevel(WARN)
 
 
 @contextmanager
-def with_suppress(suppress: bool = True) -> Iterator[None]:
+def suppress_and_log() -> Iterator[None]:
     try:
         yield None
     except Exception as e:
         log.exception("%s", e)
-        if not suppress:
-            raise

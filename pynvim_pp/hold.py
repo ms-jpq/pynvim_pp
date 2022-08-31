@@ -1,16 +1,13 @@
-from contextlib import contextmanager
-from typing import Iterator, Optional
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional
 
-from pynvim import Nvim
-from pynvim.api import Window
-
-from .api import cur_win, set_cur_win
+from .window import Window
 
 
-@contextmanager
-def hold_win_pos(nvim: Nvim, win: Optional[Window] = None) -> Iterator[None]:
-    win = win or cur_win(nvim)
+@asynccontextmanager
+async def hold_win(win: Optional[Window]) -> AsyncIterator[Window]:
+    win = win or await Window.get_current()
     try:
-        yield None
+        yield win
     finally:
-        set_cur_win(nvim, win)
+        await Window.set_current(win)

@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Iterable, MutableMapping, Optional, Tuple
 
-from pynvim.api import Buffer
-
 from .atomic import Atomic
+from .buffer import Buffer
 
 
 @dataclass(frozen=True)

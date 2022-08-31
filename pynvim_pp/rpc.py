@@ -1,153 +1,147 @@
-from __future__ import annotations
-
-from asyncio.coroutines import iscoroutinefunction
+from asyncio import Future, Queue, gather, get_event_loop, open_unix_connection
+from contextlib import asynccontextmanager
+from enum import Enum, unique
+from functools import wraps
+from itertools import count
+from pathlib import PurePath
 from typing import (
     Any,
+    AsyncIterable,
+    AsyncIterator,
     Awaitable,
     Callable,
-    Generic,
     MutableMapping,
-    MutableSequence,
-    Optional,
     Sequence,
-    Tuple,
-    TypeVar,
-    Union,
     cast,
 )
 
-from pynvim import Nvim
+from msgpack import Packer, Unpacker
 
-from .atomic import Atomic
 from .logging import log
-
-_T = TypeVar("_T")
-
-RpcMsg = Tuple[str, Sequence[Any]]
+from .types import Callback, RPClient
 
 
-class RpcCallable(Generic[_T]):
-    def __init__(
-        self,
-        namespace: str,
-        name: str,
-        blocking: bool,
-        schedule: bool,
-        handler: Union[Callable[..., _T], Callable[..., Awaitable[_T]]],
-    ) -> None:
-        self.is_async = iscoroutinefunction(handler)
-        if self.is_async and blocking:
-            raise ValueError()
-        else:
-            self._namespace = namespace
-            self.name = name
-            self.is_blocking = blocking
-            self._schedule = schedule
-            self._handler = handler
-
-    def __call__(
-        self, nvim: Nvim, *args: Any, **kwargs: Any
-    ) -> Union[_T, Awaitable[_T]]:
-        if self.is_async:
-            aw = cast(Awaitable[_T], self._handler(nvim, *args, **kwargs))
-            return aw
-        else:
-            return cast(_T, self._handler(nvim, *args, **kwargs))
+@unique
+class _MsgType(Enum):
+    req = 0
+    resp = 1
+    notif = 2
 
 
-RpcSpec = Tuple[str, RpcCallable[Any]]
+_RX_Q = MutableMapping[int, Future]
+_NOTIFS = MutableMapping[str, Callable[..., Awaitable[None]]]
+_RESPS = MutableMapping[str, Callable[[int, Sequence[Any]], Awaitable[Any]]]
+
+_LIMIT = 10**10
 
 
-def _new_lua_func(atomic: Atomic, chan: int, handler: RpcCallable[Any]) -> None:
-    op = "rpcrequest" if handler.is_blocking else "rpcnotify"
-    lua = """
-    (function(sch, op, chan, ns, name)
-      _G[ns] = _G[ns] or {}
-      _G[ns][name] = function(...)
-        local args = {chan, name, ...}
+async def _connect(
+    socket: PurePath,
+    tx: AsyncIterable[Any],
+    rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
+) -> None:
+    packer, unpacker = Packer(), Unpacker()
+    reader, writer = await open_unix_connection(socket, limit=_LIMIT)
 
-        local fn = function()
-          return vim.api.nvim_call_function(op, args)
-        end
+    async def send() -> None:
+        async for frame in tx:
+            if frame is None:
+                await writer.drain()
+            else:
+                writer.write(packer.pack(frame))
 
-        if sch then
-          return vim.schedule(fn)
-        else
-          return fn()
-        end
-      end
-    end)(...)
-    """
+    async def recv() -> AsyncIterator[Any]:
+        while data := await reader.read(_LIMIT):
+            unpacker.feed(data)
+            for frame in unpacker:
+                yield frame
 
-    atomic.execute_lua(
-        lua,
-        (handler._schedule, op, chan, handler._namespace, handler.name),
-    )
+    await gather(rx(recv()), send())
 
 
-def _new_viml_func(atomic: Atomic, handler: RpcCallable[Any]) -> None:
-    viml = f"""
-    function! {handler.name}(...)
-      return luaeval('_G["{handler._namespace}"]["{handler.name}"](unpack(...))', a:000)
-    endfunction
-    """
-    atomic.command(viml)
+class RPCError(Exception):
+    ...
 
 
-def _name_gen(fn: Callable[..., Any]) -> str:
-    return f"{fn.__module__}.{fn.__qualname__}".replace(".", "_").capitalize()
+class _RPClient(RPClient):
+    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _NOTIFS, resps: _RESPS) -> None:
+        self._loop, self._uids = get_event_loop(), count()
+        self._tx, self._rx = tx, rx
+        self._notifs, self._resps = notifs, resps
+
+    async def notify(self, method: str, *params: Any) -> None:
+        await self._tx.put((_MsgType.notif.value, method, params))
+
+    async def request(self, method: str, *params: Any) -> Sequence[Any]:
+        uid = next(self._uids)
+        fut = self._loop.create_future()
+        self._rx[uid] = fut
+        await self._tx.put((_MsgType.req.value, method, params))
+        return cast(Sequence[Any], await fut)
+
+    def on_notify(self, method: str, f: Callback) -> None:
+        assert method not in self._notifs
+        self._notifs[method] = f
+
+    def on_request(self, method: str, f: Callback) -> None:
+        assert method not in self._resps
+
+        @wraps(f)
+        async def wrapped(msg_id: int, params: Sequence[Any]) -> None:
+            try:
+                resp = await f(*params)
+            except Exception as e:
+                await self._tx.put((_MsgType.resp.value, msg_id, str(e), None))
+            else:
+                await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
+
+        self._resps[method] = wrapped
 
 
-class RPC:
-    def __init__(
-        self, namespace: str, name_gen: Callable[[Callable[..., Any]], str] = _name_gen
-    ) -> None:
-        self._handlers: MutableMapping[str, RpcCallable[Any]] = {}
-        self._namespace = namespace
-        self._name_gen = name_gen
+@asynccontextmanager
+async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
+    tx_q: Queue = Queue(maxsize=1)
+    rx_q: _RX_Q = {}
+    notifs: _NOTIFS = {}
+    resps: _RESPS = {}
 
-    def __call__(
-        self,
-        blocking: bool,
-        schedule: bool = False,
-        name: Optional[str] = None,
-    ) -> Callable[[Callable[..., _T]], RpcCallable[_T]]:
-        def decor(handler: Callable[..., _T]) -> RpcCallable[_T]:
-            c_name = name if name else self._name_gen(handler)
+    async def tx() -> AsyncIterator[Any]:
+        while True:
+            frame = await tx_q.get()
+            yield frame
 
-            wraped = RpcCallable(
-                namespace=self._namespace,
-                name=c_name,
-                blocking=blocking,
-                schedule=schedule,
-                handler=handler,
-            )
-            self._handlers[wraped.name] = wraped
-            return wraped
+    async def rx(rx: AsyncIterator[Any]) -> None:
+        async for frame in rx:
+            assert isinstance(frame, Sequence)
+            length = len(frame)
+            if length == 3:
+                ty, method, params = frame
+                assert ty is _MsgType.notif.value
+                if notif := notifs.get(method):
+                    notif(*params)
+                else:
+                    log.warn("%s", f"No RPC listener for {method}")
 
-        return decor
+            elif length == 4:
+                ty, msg_id, op1, op2 = frame
+                if ty is _MsgType.resp.value:
+                    assert msg_id not in rx_q
+                    if fut := rx_q.get(msg_id):
+                        if op1:
+                            fut.set_exception(RPCError(op1))
+                        else:
+                            fut.set_result(op2)
+                    else:
+                        log.warn("%s", f"Unexpected response message - {op1} | {op2}")
+                elif ty is _MsgType.req.value:
+                    if callback := resps.get(op1):
+                        callback(msg_id, op2)
+                    else:
+                        log.warn("%s", f"No RPC listener for {op1}")
+                else:
+                    assert False
 
-    def drain(self, chan: int) -> Tuple[Atomic, Sequence[RpcSpec]]:
-        atomic = Atomic()
-        specs: MutableSequence[RpcSpec] = []
-        while self._handlers:
-            name, handler = self._handlers.popitem()
-            _new_lua_func(atomic, chan=chan, handler=handler)
-            _new_viml_func(atomic, handler=handler)
-            specs.append((name, handler))
-
-        return atomic, specs
-
-
-def nil_handler(name: str) -> RpcCallable:
-    def handler(nvim: Nvim, *args: Any, **kwargs: Any) -> None:
-        log.warn("MISSING RPC HANDLER FOR: %s - %s - %s", name, args, kwargs)
-
-    nil = RpcCallable(
-        namespace="",
-        name=name,
-        blocking=True,
-        schedule=False,
-        handler=handler,
-    )
-    return nil
+    conn = _connect(socket, tx=tx(), rx=rx)
+    client = _RPClient(tx=tx_q, rx=rx_q, notifs=notifs, resps=resps)
+    yield client
+    await conn

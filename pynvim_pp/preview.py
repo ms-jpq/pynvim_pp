@@ -1,62 +1,66 @@
-from typing import Iterator, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple, cast
 
-from pynvim import Nvim
-from pynvim.api import Buffer, Tabpage, Window
-
-from .api import (
-    buf_set_lines,
-    buf_set_option,
-    cur_tab,
-    cur_win,
-    set_cur_win,
-    tab_list_wins,
-    win_get_buf,
-    win_get_option,
-    win_set_option,
-)
+from .atomic import Atomic
+from .buffer import Buffer
+from .tabpage import TabPage
+from .types import NoneType
+from .window import Window
 
 
-def preview_windows_in_tab(
-    nvim: Nvim, tab: Optional[Tabpage] = None
-) -> Iterator[Window]:
-    tab = tab or cur_tab(nvim)
-    wins = tab_list_wins(nvim, tab=tab)
+async def preview_windows(tab: Optional[TabPage] = None) -> Sequence[Window]:
+    tab = tab or await TabPage.get_current()
+    wins = await tab.list_wins()
+    atomic = Atomic()
     for win in wins:
-        opt: bool = win_get_option(nvim, win=win, key="previewwindow")
-        if opt:
-            yield win
+        atomic.win_get_option(win, "previewwindow")
+
+    prv = cast(Sequence[bool], await atomic.commit(NoneType))
+
+    previews = tuple(win for win, preview in zip(wins, prv) if preview)
+    return previews
 
 
-def _open_preview(nvim: Nvim) -> Tuple[Window, Buffer]:
-    win = next(preview_windows_in_tab(nvim), None)
-    if win:
-        set_cur_win(nvim, win=win)
-        buf = win_get_buf(nvim, win=win)
+async def _open_preview() -> Tuple[Window, Buffer]:
+    if win := next(iter(await preview_windows(None)), None):
+        with Atomic() as (atomic, ns):
+            atomic.set_current_win(win)
+            ns.buf = atomic.win_get_buf(win)
+            await atomic.commit(NoneType)
+        buf = ns.buf(Buffer)
         return win, buf
     else:
-        nvim.api.command("new")
-        win = cur_win(nvim)
-        buf = win_get_buf(nvim, win=win)
-        win_set_option(nvim, win=win, key="previewwindow", val=True)
-        buf_set_option(nvim, buf=buf, key="bufhidden", val="wipe")
-        height = nvim.options["previewheight"]
-        nvim.api.win_set_height(win, height)
+        with Atomic() as (atomic, ns):
+            ns._ = atomic.command("new")
+            ns.height = atomic.option("previewheight")
+            ns.win = atomic.current_win()
+            await atomic.commit(NoneType)
+
+        height = ns.height(int)
+        win = ns.win(Window)
+
+        with Atomic() as (atomic, ns):
+            ns.buf = atomic.win_get_buf(win)
+            atomic.win_get_option(win, "previewwindow", True)
+            atomic.win_set_height(win, height)
+            await atomic.commit(NoneType)
+
+        buf = ns.buf(Buffer)
+        await buf.opts.set("bufhidden", "wipe")
         return win, buf
 
 
-def buf_set_preview(
-    nvim: Nvim, buf: Buffer, syntax: str, preview: Sequence[str]
-) -> None:
-    buf_set_option(nvim, buf=buf, key="undolevels", val=-1)
-    buf_set_option(nvim, buf=buf, key="buftype", val="nofile")
-    buf_set_option(nvim, buf=buf, key="modifiable", val=True)
-    buf_set_lines(nvim, buf=buf, lo=0, hi=-1, lines=preview)
-    buf_set_option(nvim, buf=buf, key="modifiable", val=False)
-    buf_set_option(nvim, buf=buf, key="syntax", val=syntax)
+async def buf_set_preview(buf: Buffer, syntax: str, preview: Sequence[str]) -> None:
+    atomic = Atomic()
+    atomic.buf_set_option(buf, "undolevels", -1)
+    atomic.buf_set_option(buf, "buftype", "nofile")
+    atomic.buf_set_option(buf, "modifiable", True)
+    atomic.buf_set_lines(buf, 0, -1, True, preview)
+    atomic.buf_set_option(buf, "modifiable", False)
+    atomic.buf_set_option(buf, "syntax", syntax)
+    await atomic.commit(NoneType)
 
 
-def set_preview(nvim: Nvim, syntax: str, preview: Sequence[str]) -> Buffer:
-    _, buf = _open_preview(nvim)
-    buf_set_preview(nvim, buf=buf, syntax=syntax, preview=preview)
+async def set_preview(syntax: str, preview: Sequence[str]) -> Buffer:
+    _, buf = await _open_preview()
+    await buf_set_preview(buf=buf, syntax=syntax, preview=preview)
     return buf
-

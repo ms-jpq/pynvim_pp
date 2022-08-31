@@ -1,35 +1,31 @@
 from string import whitespace
-from typing import Literal, Optional, Tuple
+from typing import Literal, Optional, Tuple, cast
 
-from pynvim import Nvim
-from pynvim.api import Buffer, Window
-
-from .api import NvimPos, buf_get_mark, buf_get_option
 from .atomic import Atomic
+from .buffer import Buffer
+from .types import NoneType, NvimPos
+from .window import Window
 
 VisualMode = Literal["v", "V"]
 VisualTypes = Optional[Literal["char", "line", "block"]]
 
 
-def writable(nvim: Nvim, buf: Buffer) -> bool:
-    is_modifiable: bool = buf_get_option(nvim, buf=buf, key="modifiable")
-    return is_modifiable
-
-
-def operator_marks(
-    nvim: Nvim, buf: Buffer, visual_type: VisualTypes
+async def operator_marks(
+    buf: Buffer, visual_type: VisualTypes
 ) -> Tuple[NvimPos, NvimPos]:
     assert visual_type in {None, "char", "line", "block"}
     mark1, mark2 = ("[", "]") if visual_type else ("<", ">")
-    m1 = buf_get_mark(nvim, buf=buf, mark=mark1)
-    m2 = buf_get_mark(nvim, buf=buf, mark=mark2)
-    assert m1 and m2
-    (row1, col1), (row2, col2) = m1, m2
-    return (row1, col1), (row2, col2 + 1)
+    with Atomic() as (atomic, ns):
+        ns.m1 = atomic.buf_get_mark(buf, mark1)
+        ns.m2 = atomic.buf_get_mark(buf, mark2)
+
+        await atomic.commit(NoneType)
+    (row1, col1) = cast(NvimPos, ns.m1(NoneType))
+    (row2, col2) = cast(NvimPos, ns.m2(NoneType))
+    return (row1, col1 + 1), (row2, col2 + 1)
 
 
-def set_visual_selection(
-    nvim: Nvim,
+async def set_visual_selection(
     win: Window,
     mode: VisualMode,
     mark1: NvimPos,
@@ -48,7 +44,7 @@ def set_visual_selection(
         atomic.win_set_cursor(win, (r1 + 1, c1))
         atomic.command(f"norm! {mode}")
         atomic.win_set_cursor(win, (r2 + 1, max(0, c2 - 1)))
-    atomic.commit(nvim)
+    await atomic.commit(NoneType)
 
 
 def p_indent(line: str, tabsize: int) -> int:

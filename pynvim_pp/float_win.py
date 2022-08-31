@@ -1,20 +1,14 @@
 from dataclasses import dataclass
 from math import floor
-from typing import Iterator, Literal, Optional, Tuple, Union
+from typing import AsyncIterator, Literal, Tuple, Union
 from uuid import uuid4
 
-from pynvim import Nvim
-from pynvim.api import Buffer, Window
-
-from .api import (
-    NvimPos,
-    buf_set_var,
-    list_wins,
-    win_get_var,
-    win_set_option,
-    win_set_var,
-)
-from .lib import display_width, nvim_has
+from .atomic import Atomic
+from .buffer import Buffer
+from .lib import display_width
+from .nvim import NoneType, _Nvim
+from .types import NvimPos
+from .window import Window
 
 FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
 
@@ -43,10 +37,9 @@ Border = Union[
 ]
 
 
-def list_floatwins(nvim: Nvim) -> Iterator[Window]:
-    for win in list_wins(nvim):
-        flag: Optional[str] = win_get_var(nvim, win, FLOATWIN_VAR_NAME)
-        if flag:
+async def list_floatwins() -> AsyncIterator[Window]:
+    for win in await Window.list():
+        if await win.vars.has(FLOATWIN_VAR_NAME):
             yield win
 
 
@@ -73,8 +66,7 @@ def border_w_h(
         return width, height
 
 
-def _open_float_win(
-    nvim: Nvim,
+async def _open_float_win(
     buf: Buffer,
     width: int,
     height: int,
@@ -93,16 +85,16 @@ def _open_float_win(
         "col": col,
         "focusable": focusable,
     }
-    if nvim_has(nvim, "nvim-0.5"):
+    if buf.api.has("nvim-0.5"):
         opts.update(noautocmd=True, border=border)
 
-    win: Window = nvim.api.open_win(buf, True, opts)
-    win_set_option(nvim, win=win, key="winhighlight", val="Normal:Floating")
+    win = await buf.api.open_win(Window, buf, True, opts)
+    await win.opts.set("winhighlight", "Normal:Floating")
     return win
 
 
-def open_float_win(
-    nvim: Nvim,
+async def open_float_win(
+    nvim: _Nvim,
     margin: int,
     relsize: float,
     buf: Buffer,
@@ -110,19 +102,18 @@ def open_float_win(
 ) -> FloatWin:
     assert margin >= 0
     assert 0 < relsize < 1
-    if not nvim_has(nvim, "nvim-0.5"):
+    if not await buf.api.has("nvim-0.5"):
         border = None
 
-    t_width, t_height = nvim.options["columns"], nvim.options["lines"]
+    t_height, t_width = await nvim.size()
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
     b_width, b_height = border_w_h(border)
-    row = (t_height - height) / 2 + 1
-    col = (t_width - width) / 2 + 1
+    row = (t_height - height) // 2 + 1
+    col = (t_width - width) // 2 + 1
 
-    win = _open_float_win(
-        nvim,
-        buf=buf,
+    win = await _open_float_win(
+        buf,
         width=width - b_width,
         height=height - b_height,
         pos=(row, col),
@@ -131,7 +122,10 @@ def open_float_win(
     )
 
     uid = uuid4().hex
-    win_set_var(nvim, win=win, key=FLOATWIN_VAR_NAME, val=uid)
-    buf_set_var(nvim, buf=buf, key=FLOATWIN_VAR_NAME, val=uid)
+    atomic = Atomic()
+
+    atomic.win_set_var(buf, FLOATWIN_VAR_NAME, uid)
+    atomic.buf_set_var(buf, FLOATWIN_VAR_NAME, uid)
+    await atomic.commit(NoneType)
 
     return FloatWin(uid=uid, win=win, buf=buf)
