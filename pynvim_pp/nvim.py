@@ -8,6 +8,7 @@ from itertools import chain
 from os.path import normpath
 from pathlib import Path, PurePath
 from string import ascii_uppercase
+from sys import version_info
 from typing import (
     Any,
     AsyncIterator,
@@ -28,11 +29,12 @@ from msgpack import ExtType
 
 from .atomic import Atomic
 from .buffer import NS, Buffer
-from .handler import GLOBAL_NS, RPCallable
+from .handler import GLOBAL_NS, RPC, RPCallable
 from .lib import resolve_path
-from .rpc import RPCError, client
-from .tabpage import TabPage
+from .rpc import client
+from .tabpage import Tabpage
 from .types import (
+    PARENT,
     Api,
     Callback,
     Chan,
@@ -41,6 +43,7 @@ from .types import (
     HasAPI,
     HasChan,
     NoneType,
+    NvimError,
     NvimPos,
     Opts,
     RPCallable,
@@ -49,10 +52,9 @@ from .types import (
 )
 from .window import Window
 
-_LUA_EXEC = (Path(__file__).resolve(strict=True).parent / "exec.lua").read_text("utf-8")
+_LUA_EXEC = (PARENT / "exec.lua").read_text("utf-8")
 
 
-NvimError = RPCError
 _T = TypeVar("_T")
 
 Marker = NewType("Marker", str)
@@ -98,7 +100,7 @@ class _LUA(HasAPI):
 class _Wrap(RPClient):
     def __init__(self, rpc: RPClient) -> None:
         self._rpc = rpc
-        self._mapping = {ext.code: ext for ext in (Buffer, Window, TabPage)}
+        self._mapping = {ext.code: ext for ext in (Buffer, Window, Tabpage)}
 
     def _unpack(self, val: Any) -> Any:
         if isinstance(val, Sequence) and not isinstance(val, (str, ByteString)):
@@ -275,6 +277,18 @@ class _Nvim(HasAPI, HasChan):
 @asynccontextmanager
 async def conn(socket: PurePath) -> AsyncIterator[RPClient]:
     async with client(socket) as rpc:
+        await rpc.notify(
+            "nvim_set_client_info",
+            PARENT.name,
+            {
+                "major": version_info.major,
+                "minor": version_info.minor,
+                "patch": version_info.micro,
+            },
+            "remote",
+            (),
+            {},
+        )
         chan, meta = await rpc.request("nvim_get_api_info")
 
         assert isinstance(meta, Mapping)
@@ -283,16 +297,19 @@ async def conn(socket: PurePath) -> AsyncIterator[RPClient]:
 
         Buffer.init_code(code=types["Buffer"]["id"])
         Window.init_code(code=types["Window"]["id"])
-        TabPage.init_code(code=types["Tabpage"]["id"])
+        Tabpage.init_code(code=types["Tabpage"]["id"])
 
         wrapped = _Wrap(rpc=rpc)
 
-        for cls in (_Nvim, Buffer, Window, TabPage, _LUA, _CUR):
+        for cls in (_Nvim, Atomic, Buffer, Window, Tabpage, _LUA, _CUR):
             c = cast(HasAPI, cls)
             api = Api(rpc=wrapped, prefix=c.prefix)
             c.init_api(api=api)
 
-        _Nvim.init_chan(chan=Chan(chan))
+        ch = Chan(chan)
+        for cls in (_Nvim, RPC):
+            c = cast(HasChan, cls)
+            c.init_chan(chan=ch)
 
         yield wrapped
 

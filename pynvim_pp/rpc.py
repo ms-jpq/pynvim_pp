@@ -1,4 +1,11 @@
-from asyncio import Future, Queue, gather, get_event_loop, open_unix_connection
+from asyncio import (
+    Future,
+    Queue,
+    create_task,
+    gather,
+    get_event_loop,
+    open_unix_connection,
+)
 from contextlib import asynccontextmanager
 from enum import Enum, unique
 from functools import wraps
@@ -19,7 +26,7 @@ from typing import (
 from msgpack import Packer, Unpacker
 
 from .logging import log
-from .types import Callback, RPClient
+from .types import Callback, NvimError, RPClient
 
 
 @unique
@@ -34,7 +41,7 @@ _CALLBACKS = MutableMapping[
     str, Callable[[Optional[int], Sequence[Any]], Awaitable[Any]]
 ]
 
-_LIMIT = 10**10
+_LIMIT = 2**16
 
 
 async def _connect(
@@ -43,7 +50,7 @@ async def _connect(
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
 ) -> None:
     packer, unpacker = Packer(), Unpacker()
-    reader, writer = await open_unix_connection(socket, limit=_LIMIT)
+    reader, writer = await open_unix_connection(socket)
 
     async def send() -> None:
         async for frame in tx:
@@ -61,10 +68,6 @@ async def _connect(
     await gather(rx(recv()), send())
 
 
-class RPCError(Exception):
-    ...
-
-
 class _RPClient(RPClient):
     def __init__(self, tx: Queue, rx: _RX_Q, notifs: _CALLBACKS) -> None:
         self._loop, self._uids = get_event_loop(), count()
@@ -78,7 +81,7 @@ class _RPClient(RPClient):
         uid = next(self._uids)
         fut = self._loop.create_future()
         self._rx[uid] = fut
-        await self._tx.put((_MsgType.req.value, method, params))
+        await self._tx.put((_MsgType.req.value, uid, method, params))
         return cast(Sequence[Any], await fut)
 
     def on_callback(self, method: str, f: Callback) -> None:
@@ -109,6 +112,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
         while True:
             frame = await tx_q.get()
             yield frame
+            yield None
 
     async def rx(rx: AsyncIterator[Any]) -> None:
         async for frame in rx:
@@ -116,7 +120,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
             length = len(frame)
             if length == 3:
                 ty, method, params = frame
-                assert ty is _MsgType.notif.value
+                assert ty == _MsgType.notif.value
                 if cb := callbacks.get(method):
                     cb(None, params)
                 else:
@@ -124,16 +128,15 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
-                if ty is _MsgType.resp.value:
-                    assert msg_id not in rx_q
+                if ty == _MsgType.resp.value:
                     if fut := rx_q.get(msg_id):
                         if op1:
-                            fut.set_exception(RPCError(op1))
+                            fut.set_exception(NvimError(op1))
                         else:
                             fut.set_result(op2)
                     else:
                         log.warn("%s", f"Unexpected response message - {op1} | {op2}")
-                elif ty is _MsgType.req.value:
+                elif ty == _MsgType.req.value:
                     if cb := callbacks.get(op1):
                         cb(msg_id, op2)
                     else:
@@ -141,7 +144,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
                 else:
                     assert False
 
-    conn = _connect(socket, tx=tx(), rx=rx)
+    conn = create_task(_connect(socket, tx=tx(), rx=rx))
     client = _RPClient(tx=tx_q, rx=rx_q, notifs=callbacks)
     yield client
     await conn

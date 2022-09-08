@@ -2,13 +2,13 @@ from typing import Optional, Sequence, Tuple, cast
 
 from .atomic import Atomic
 from .buffer import Buffer
-from .tabpage import TabPage
+from .tabpage import Tabpage
 from .types import NoneType
 from .window import Window
 
 
-async def preview_windows(tab: Optional[TabPage] = None) -> Sequence[Window]:
-    tab = tab or await TabPage.get_current()
+async def preview_windows(tab: Optional[Tabpage] = None) -> Sequence[Window]:
+    tab = tab or await Tabpage.get_current()
     wins = await tab.list_wins()
     atomic = Atomic()
     for win in wins:

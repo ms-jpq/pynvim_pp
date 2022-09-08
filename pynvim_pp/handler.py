@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from inspect import iscoroutinefunction
-from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -16,14 +15,14 @@ from typing import (
 from uuid import uuid4
 
 from .atomic import Atomic
-from .types import Chan, HasChan, RPCallable
+from .types import PARENT, Chan, HasChan, RPCallable
 
 _T = TypeVar("_T")
 
 
 GLOBAL_NS = str(uuid4())
 
-_LUA_PRC = (Path(__file__).resolve(strict=True).parent / "rpc.lua").read_text("utf-8")
+_LUA_PRC = (PARENT / "rpc.lua").read_text("utf-8")
 
 
 def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:

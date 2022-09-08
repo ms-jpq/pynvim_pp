@@ -14,8 +14,7 @@ from typing import (
     cast,
 )
 
-from .nvim import NvimError
-from .types import Api, NoneType
+from .types import Api, NoneType, NvimError
 
 _T = TypeVar("_T")
 

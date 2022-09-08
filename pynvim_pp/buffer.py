@@ -53,7 +53,7 @@ class Buffer(Ext):
     prefix = "nvim_buf"
 
     @classmethod
-    async def list_bufs(cls, listed: bool) -> Sequence[Buffer]:
+    async def list(cls, listed: bool) -> Sequence[Buffer]:
 
         if listed:
             raw = await cls.api.execute(str, ":buffers")

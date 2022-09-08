@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from functools import cached_property
+from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -19,6 +20,12 @@ from uuid import UUID
 NoneType = bool
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
+
+PARENT = Path(__file__).resolve(strict=True).parent
+
+
+class NvimError(Exception):
+    ...
 
 
 Chan = NewType("Chan", int)

@@ -6,8 +6,8 @@ from uuid import uuid4
 from .atomic import Atomic
 from .buffer import Buffer
 from .lib import display_width
-from .nvim import NoneType, _Nvim
-from .types import NvimPos
+from .nvim import Nvim
+from .types import NoneType, NvimPos
 from .window import Window
 
 FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
@@ -94,7 +94,6 @@ async def _open_float_win(
 
 
 async def open_float_win(
-    nvim: _Nvim,
     margin: int,
     relsize: float,
     buf: Buffer,
@@ -105,7 +104,7 @@ async def open_float_win(
     if not await buf.api.has("nvim-0.5"):
         border = None
 
-    t_height, t_width = await nvim.size()
+    t_height, t_width = await Nvim.size()
     width = floor((t_width - margin) * relsize)
     height = floor((t_height - margin) * relsize)
     b_width, b_height = border_w_h(border)
