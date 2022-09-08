@@ -35,12 +35,15 @@ from .tabpage import TabPage
 from .types import (
     Api,
     Callback,
+    Chan,
     Ext,
     Fn,
     HasAPI,
+    HasChan,
     NoneType,
     NvimPos,
     Opts,
+    RPCallable,
     RPClient,
     Vars,
 )
@@ -52,7 +55,6 @@ _LUA_EXEC = (Path(__file__).resolve(strict=True).parent / "exec.lua").read_text(
 NvimError = RPCError
 _T = TypeVar("_T")
 
-Chan = NewType("Chan", int)
 Marker = NewType("Marker", str)
 
 
@@ -94,7 +96,6 @@ class _LUA(HasAPI):
 
 
 class _Wrap(RPClient):
-
     def __init__(self, rpc: RPClient) -> None:
         self._rpc = rpc
         self._mapping = {ext.code: ext for ext in (Buffer, Window, TabPage)}
@@ -127,28 +128,17 @@ class _Wrap(RPClient):
         resp = await self._rpc.request(method, *map(self._pack, params))
         return tuple(map(self._unpack, resp))
 
-    def on_notify(self, method: str, f: Callback) -> None:
+    def on_callback(self, method: str, f: Callback) -> None:
         @wraps(f)
         async def ff(*params: Any) -> Any:
             return await f(*map(self._unpack, params))
 
-        self._rpc.on_notify(method, f=ff)
-
-    def on_request(self, method: str, f: Callback) -> None:
-        @wraps(f)
-        async def ff(*params: Any) -> Any:
-            return await f(*map(self._unpack, params))
-
-        self._rpc.on_request(method, f=ff)
+        self._rpc.on_callback(method, f=ff)
 
 
-class _Nvim(HasAPI):
+class _Nvim(HasAPI, HasChan):
     prefix = "nvim"
     chan = cast(Chan, None)
-
-    @classmethod
-    def init_nvim(cls, chan: Chan) -> None:
-        cls.chan = chan
 
     @cached_property
     def lua(self) -> _LUA:
@@ -301,7 +291,8 @@ async def conn(socket: PurePath) -> AsyncIterator[RPClient]:
             c = cast(HasAPI, cls)
             api = Api(rpc=wrapped, prefix=c.prefix)
             c.init_api(api=api)
-        _Nvim.init_nvim(chan=Chan(chan))
+
+        _Nvim.init_chan(chan=Chan(chan))
 
         yield wrapped
 

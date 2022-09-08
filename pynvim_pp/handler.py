@@ -9,48 +9,24 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
-    Protocol,
-    Sequence,
     Tuple,
     TypeVar,
     cast,
 )
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from .atomic import Atomic
+from .types import Chan, HasChan, RPCallable
 
 _T = TypeVar("_T")
-_T_co = TypeVar("_T_co", covariant=True)
 
-RpcMsg = Tuple[str, Sequence[Any]]
 
 GLOBAL_NS = str(uuid4())
 
 _LUA_PRC = (Path(__file__).resolve(strict=True).parent / "rpc.lua").read_text("utf-8")
 
 
-class RPCallable(Protocol[_T_co]):
-    @property
-    def uuid(self) -> UUID:
-        ...
-
-    @property
-    def blocking(self) -> bool:
-        ...
-
-    @property
-    def namespace(self) -> str:
-        ...
-
-    @property
-    def name(self) -> str:
-        ...
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> Awaitable[_T_co]:
-        ...
-
-
-def _new_lua_func(atomic: Atomic, chan: int, handler: RPCallable[Any]) -> None:
+def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
     method = "rpcrequest" if handler.blocking else "rpcnotify"
     atomic.exec_lua(
         _LUA_PRC,
@@ -71,7 +47,7 @@ def _name_gen(fn: Callable[..., Awaitable[Any]]) -> str:
     return f"{fn.__module__}.{fn.__qualname__}".replace(".", "_").capitalize()
 
 
-class RPC:
+class RPC(HasChan):
     def __init__(
         self,
         namespace: str,
@@ -100,12 +76,12 @@ class RPC:
 
         return decor
 
-    def drain(self, chan: int) -> Tuple[Atomic, Mapping[str, RPCallable[Any]]]:
+    def drain(self) -> Tuple[Atomic, Mapping[str, RPCallable[Any]]]:
         atomic = Atomic()
         specs: MutableMapping[str, RPCallable[Any]] = {}
         while self._handlers:
             name, handler = self._handlers.popitem()
-            _new_lua_func(atomic, chan=chan, handler=handler)
+            _new_lua_func(atomic, chan=self.chan, handler=handler)
             _new_viml_func(atomic, handler=handler)
             specs[name] = handler
 

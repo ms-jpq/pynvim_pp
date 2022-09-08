@@ -11,6 +11,7 @@ from typing import (
     Awaitable,
     Callable,
     MutableMapping,
+    Optional,
     Sequence,
     cast,
 )
@@ -29,8 +30,9 @@ class _MsgType(Enum):
 
 
 _RX_Q = MutableMapping[int, Future]
-_NOTIFS = MutableMapping[str, Callable[..., Awaitable[None]]]
-_RESPS = MutableMapping[str, Callable[[int, Sequence[Any]], Awaitable[Any]]]
+_CALLBACKS = MutableMapping[
+    str, Callable[[Optional[int], Sequence[Any]], Awaitable[Any]]
+]
 
 _LIMIT = 10**10
 
@@ -64,10 +66,10 @@ class RPCError(Exception):
 
 
 class _RPClient(RPClient):
-    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _NOTIFS, resps: _RESPS) -> None:
+    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _CALLBACKS) -> None:
         self._loop, self._uids = get_event_loop(), count()
         self._tx, self._rx = tx, rx
-        self._notifs, self._resps = notifs, resps
+        self._callbacks = notifs
 
     async def notify(self, method: str, *params: Any) -> None:
         await self._tx.put((_MsgType.notif.value, method, params))
@@ -79,31 +81,29 @@ class _RPClient(RPClient):
         await self._tx.put((_MsgType.req.value, method, params))
         return cast(Sequence[Any], await fut)
 
-    def on_notify(self, method: str, f: Callback) -> None:
-        assert method not in self._notifs
-        self._notifs[method] = f
-
-    def on_request(self, method: str, f: Callback) -> None:
-        assert method not in self._resps
+    def on_callback(self, method: str, f: Callback) -> None:
+        assert method not in self._callbacks
 
         @wraps(f)
-        async def wrapped(msg_id: int, params: Sequence[Any]) -> None:
-            try:
-                resp = await f(*params)
-            except Exception as e:
-                await self._tx.put((_MsgType.resp.value, msg_id, str(e), None))
+        async def wrapped(msg_id: Optional[int], params: Sequence[Any]) -> None:
+            if msg_id is None:
+                await f(*params)
             else:
-                await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
+                try:
+                    resp = await f(*params)
+                except Exception as e:
+                    await self._tx.put((_MsgType.resp.value, msg_id, str(e), None))
+                else:
+                    await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
 
-        self._resps[method] = wrapped
+        self._callbacks[method] = wrapped
 
 
 @asynccontextmanager
 async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
     tx_q: Queue = Queue(maxsize=1)
     rx_q: _RX_Q = {}
-    notifs: _NOTIFS = {}
-    resps: _RESPS = {}
+    callbacks: _CALLBACKS = {}
 
     async def tx() -> AsyncIterator[Any]:
         while True:
@@ -117,8 +117,8 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
             if length == 3:
                 ty, method, params = frame
                 assert ty is _MsgType.notif.value
-                if notif := notifs.get(method):
-                    notif(*params)
+                if cb := callbacks.get(method):
+                    cb(None, params)
                 else:
                     log.warn("%s", f"No RPC listener for {method}")
 
@@ -134,14 +134,14 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
                     else:
                         log.warn("%s", f"Unexpected response message - {op1} | {op2}")
                 elif ty is _MsgType.req.value:
-                    if callback := resps.get(op1):
-                        callback(msg_id, op2)
+                    if cb := callbacks.get(op1):
+                        cb(msg_id, op2)
                     else:
                         log.warn("%s", f"No RPC listener for {op1}")
                 else:
                     assert False
 
     conn = _connect(socket, tx=tx(), rx=rx)
-    client = _RPClient(tx=tx_q, rx=rx_q, notifs=notifs, resps=resps)
+    client = _RPClient(tx=tx_q, rx=rx_q, notifs=callbacks)
     yield client
     await conn

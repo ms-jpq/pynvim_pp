@@ -5,6 +5,7 @@ from typing import (
     Awaitable,
     Callable,
     MutableMapping,
+    NewType,
     Optional,
     Protocol,
     Sequence,
@@ -13,9 +14,14 @@ from typing import (
     TypeVar,
     cast,
 )
+from uuid import UUID
 
 NoneType = bool
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+Chan = NewType("Chan", int)
 Callback = Callable[..., Awaitable[Any]]
 
 
@@ -25,6 +31,27 @@ class CastReturnAF(Protocol):
 
 
 NvimPos = Tuple[int, int]
+
+
+class RPCallable(Protocol[_T_co]):
+    @property
+    def uuid(self) -> UUID:
+        ...
+
+    @property
+    def blocking(self) -> bool:
+        ...
+
+    @property
+    def namespace(self) -> str:
+        ...
+
+    @property
+    def name(self) -> str:
+        ...
+
+    async def __call__(self, *args: Any, **kwargs: Any) -> Awaitable[_T_co]:
+        ...
 
 
 class RPClient(Protocol):
@@ -37,11 +64,7 @@ class RPClient(Protocol):
         ...
 
     @abstractmethod
-    def on_notify(self, method: str, f: Callback) -> None:
-        ...
-
-    @abstractmethod
-    def on_request(self, method: str, f: Callback) -> None:
+    def on_callback(self, method: str, f: Callback) -> None:
         ...
 
 
@@ -129,6 +152,14 @@ class HasAPI:
     @classmethod
     def init_api(cls, api: Api) -> None:
         cls.api = api
+
+
+class HasChan:
+    chan = cast(Chan, None)
+
+    @classmethod
+    def init_chan(cls, chan: Chan) -> None:
+        cls.chan = chan
 
 
 class Ext(HasAPI):
