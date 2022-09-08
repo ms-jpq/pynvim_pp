@@ -1,15 +1,16 @@
 from abc import abstractmethod
-from functools import cached_property
+from os import linesep
 from pathlib import Path
+from string import Template
 from typing import (
     Any,
     Awaitable,
     Callable,
+    Iterator,
     MutableMapping,
     NewType,
     Optional,
     Protocol,
-    Sequence,
     Tuple,
     Type,
     TypeVar,
@@ -17,11 +18,15 @@ from typing import (
 )
 from uuid import UUID
 
+from .lib import decode
+
 NoneType = bool
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 
 PARENT = Path(__file__).resolve(strict=True).parent
+
+_LUA_CALL = Template(decode((PARENT / "call.lua").read_bytes().strip()))
 
 
 class NvimError(Exception):
@@ -34,6 +39,13 @@ Callback = Callable[..., Awaitable[Any]]
 
 class CastReturnAF(Protocol):
     async def __call__(self, ty: Type[_T], *args: Any) -> _T:
+        ...
+
+
+class ApiReturnAF(Protocol):
+    async def __call__(
+        self, ty: Type[_T], *args: Any, prefix: Optional[str] = None
+    ) -> _T:
         ...
 
 
@@ -62,12 +74,17 @@ class RPCallable(Protocol[_T_co]):
 
 
 class RPClient(Protocol):
+    @property
+    @abstractmethod
+    def chan(self) -> Chan:
+        ...
+
     @abstractmethod
     async def notify(self, method: str, *params: Any) -> None:
         ...
 
     @abstractmethod
-    async def request(self, method: str, *params: Any) -> Sequence[Any]:
+    async def request(self, method: str, *params: Any) -> Any:
         ...
 
     @abstractmethod
@@ -82,14 +99,11 @@ class Api:
         self._rpc = rpc
         self.prefix = prefix
 
-    def __getattr__(self, attr: str) -> CastReturnAF:
-        method = f"{self._prefix}_{attr}"
-
-        async def cont(ty: Type[_T], *params: Any) -> _T:
+    def __getattr__(self, attr: str) -> ApiReturnAF:
+        async def cont(ty: Type[_T], *params: Any, prefix: Optional[str] = None) -> _T:
+            method = f"{prefix or self.prefix}_{attr}"
             resp = await self._rpc.request(method, *params)
-            assert len(resp) == 1
-            re, *_ = resp
-            return cast(_T, re)
+            return cast(_T, resp)
 
         return cont
 
@@ -97,32 +111,24 @@ class Api:
         if (has := self._features.get(feature)) is not None:
             return has
         else:
-            has, *_ = await self._rpc.request("nvim_call_function", "has", (feature,))
+            has = await self._rpc.request("nvim_call_function", "has", (feature,))
             self._features[feature] = has
             return has
 
 
-class Fn:
-    def __init__(self, api: Api) -> None:
-        self._api = api
+class _ApiTargeted:
+    def __init__(self, api: Api, this: Optional[Any]) -> None:
+        self._api, self._this = api, this
 
-    def __getattr__(self, attr: str) -> CastReturnAF:
-        async def cont(ty: Type[_T], *params: Any) -> _T:
-            return await self._api.request(ty, "nvim_call_function", attr, params)
-
-        return cont
-
-    def __getitem__(self, attr: str) -> CastReturnAF:
-        return self.__getattr__(attr)
+    def _that(self) -> Iterator[Any]:
+        if self._this:
+            yield self._this
 
 
-class Vars:
-    def __init__(self, api: Api) -> None:
-        self._api = api
-
+class Vars(_ApiTargeted):
     async def has(self, key: str) -> bool:
         try:
-            await self._api.get_var(NoneType, key)
+            await self._api.get_var(NoneType, *self._that(), key)
         except Exception:
             return False
         else:
@@ -130,35 +136,39 @@ class Vars:
 
     async def get(self, ty: Type[_T], key: str) -> Optional[_T]:
         try:
-            return await self._api.get_var(ty, key)
+            return await self._api.get_var(ty, *self._that(), key)
         except Exception:
             return None
 
     async def set(self, key: str, val: Any) -> None:
-        await self._api.set_var(NoneType, key, val)
+        await self._api.set_var(NoneType, *self._that(), key, val)
 
     async def delete(self, key: str) -> None:
-        await self._api.del_var(NoneType, key)
+        await self._api.del_var(NoneType, *self._that(), key)
 
 
-class Opts:
-    def __init__(self, api: Api) -> None:
-        self._api = api
-
+class Opts(_ApiTargeted):
     async def get(self, ty: Type[_T], key: str) -> _T:
-        return await self._api.get_option(ty, key)
+        return await self._api.get_option(ty, *self._that(), key)
 
     async def set(self, key: str, val: Any) -> None:
-        await self._api.set_option(NoneType, key, val)
+        await self._api.set_option(NoneType, *self._that(), key, val)
 
 
-class HasAPI:
-    prefix = ""
+class HasApi:
+    base_prefix = "nvim"
+    prefix = base_prefix
     api = cast(Api, None)
 
     @classmethod
     def init_api(cls, api: Api) -> None:
         cls.api = api
+
+
+class HasLocalCall(HasApi):
+    async def local_lua(self, ty: Type[_T], lua: str, *argv: Any) -> _T:
+        fn = _LUA_CALL.substitute(BODY=linesep + lua)
+        return await self.api.exec_lua(ty, fn, (self.prefix, self, *argv))
 
 
 class HasChan:
@@ -169,7 +179,7 @@ class HasChan:
         cls.chan = chan
 
 
-class Ext(HasAPI):
+class Ext(HasApi):
     code = cast(int, None)
 
     @classmethod
@@ -179,6 +189,8 @@ class Ext(HasAPI):
 
     def __init__(self, data: bytes) -> None:
         self.data = data
+        self.vars = Vars(self.api, this=self)
+        self.opts = Opts(self.api, this=self)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Ext):
@@ -188,11 +200,3 @@ class Ext(HasAPI):
 
     def __hash__(self) -> int:
         return hash((self.code, self.data))
-
-    @cached_property
-    def vars(self) -> Vars:
-        return Vars(self.api)
-
-    @cached_property
-    def opts(self) -> Opts:
-        return Opts(self.api)

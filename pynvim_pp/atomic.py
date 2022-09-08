@@ -14,7 +14,7 @@ from typing import (
     cast,
 )
 
-from .types import Api, NoneType, NvimError
+from .types import HasApi, NoneType, NvimError
 
 _T = TypeVar("_T")
 
@@ -56,20 +56,17 @@ class _NS:
                 raise AttributeError()
 
     def __setattr__(self, key: str, val: Any) -> None:
-        assert isinstance(val, int)
         if key == "_parent":
             super().__setattr__(key, val)
         elif self._parent._commited:
             raise RuntimeError()
         else:
+            assert isinstance(val, int)
             self._parent._ns_mapping[key] = val
 
 
-class Atomic:
-    _api: Optional[Api] = None
-
-    def __init__(self, prefix: str = "nvim") -> None:
-        self._prefix = prefix
+class Atomic(HasApi):
+    def __init__(self) -> None:
         self._commited = False
         self._instructions: MutableSequence[_AtomicInstruction] = []
         self._resultset: MutableSequence[Any] = []
@@ -97,16 +94,14 @@ class Atomic:
         if self._commited:
             raise RuntimeError()
         else:
-            assert self._api
-
             self._commited = True
             inst = tuple(
-                (f"{self._prefix}_{instruction}", args)
+                (f"{self.prefix}_{instruction}", args)
                 for instruction, args in self._instructions
             )
             out, err = cast(
-                Tuple[Sequence[Any], Sequence[Any]],
-                await self._api.call_atomic(NoneType, inst),
+                Tuple[Sequence[Any], Optional[Tuple[int, str, str]]],
+                await self.api.call_atomic(NoneType, inst),
             )
             if err:
                 self._resultset[:] = []

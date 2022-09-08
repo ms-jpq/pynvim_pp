@@ -5,6 +5,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Coroutine,
     Mapping,
     MutableMapping,
     Optional,
@@ -15,6 +16,7 @@ from typing import (
 from uuid import uuid4
 
 from .atomic import Atomic
+from .lib import decode
 from .types import PARENT, Chan, HasChan, RPCallable
 
 _T = TypeVar("_T")
@@ -22,21 +24,21 @@ _T = TypeVar("_T")
 
 GLOBAL_NS = str(uuid4())
 
-_LUA_PRC = (PARENT / "rpc.lua").read_text("utf-8")
+_LUA_PRC = decode((PARENT / "rpc.lua").read_bytes().strip())
 
 
 def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
     method = "rpcrequest" if handler.blocking else "rpcnotify"
     atomic.exec_lua(
         _LUA_PRC,
-        (GLOBAL_NS, method, chan, handler.uuid, handler.namespace, handler.name),
+        (GLOBAL_NS, method, chan, str(handler.uuid), handler.namespace, handler.name),
     )
 
 
 def _new_viml_func(atomic: Atomic, handler: RPCallable[Any]) -> None:
     viml = f"""
     function! {handler.name}(...)
-      return luaeval('return _G["{handler.namespace}"]["{handler.name}"](unpack(...))', a:000)
+      return luaeval('_G["{GLOBAL_NS}"]["{handler.uuid}"](unpack(_A))', a:000)
     endfunction
     """
     atomic.command(viml)
@@ -60,8 +62,8 @@ class RPC(HasChan):
         self,
         blocking: bool,
         name: Optional[str] = None,
-    ) -> Callable[[_T], _T]:
-        def decor(handler: _T) -> _T:
+    ) -> Callable[[Callable[..., Coroutine[Any, Any, _T]]], RPCallable[_T]]:
+        def decor(handler: Callable[..., Coroutine[Any, Any, _T]]) -> RPCallable[_T]:
             assert iscoroutinefunction(handler)
             h_name = name or self._name_gen(cast(Any, handler))
 
@@ -71,7 +73,7 @@ class RPC(HasChan):
             setattr(handler, "name", h_name)
 
             self._handlers[h_name] = cast(RPCallable, handler)
-            return cast(_T, cast(Any, handler))
+            return cast(RPCallable[_T], cast(Any, handler))
 
         return decor
 

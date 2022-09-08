@@ -22,7 +22,7 @@ return (function(gns, method, chan, uuid, ns, name)
       end
     end
 
-    return m[method](chan, name, unpack(argv))
+    return m(chan, name, unpack(argv))
   end
 
   namespace[name] = fn

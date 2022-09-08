@@ -22,7 +22,7 @@ async def operator_marks(
         await atomic.commit(NoneType)
     (row1, col1) = cast(NvimPos, ns.m1(NoneType))
     (row2, col2) = cast(NvimPos, ns.m2(NoneType))
-    return (row1, col1 + 1), (row2, col2 + 1)
+    return (row1 - 1, col1), (row2 - 1, col2 + 1)
 
 
 async def set_visual_selection(

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cached_property
 from string import ascii_lowercase
 from typing import (
     Any,
-    ClassVar,
     Iterable,
     Iterator,
     Mapping,
@@ -20,7 +18,7 @@ from typing import (
 
 from .atomic import Atomic
 from .lib import decode, encode
-from .types import Api, Ext, Fn, NoneType, NvimPos
+from .types import Ext, HasLocalCall, NoneType, NvimPos
 
 NS = NewType("NS", int)
 ExtMarker = NewType("ExtMarker", int)
@@ -29,12 +27,6 @@ BufMarker = NewType("BufMarker", str)
 
 @dataclass(frozen=True)
 class ExtMark:
-    _api: ClassVar[Optional[Api]] = None
-
-    @classmethod
-    def init(cls, api: Api) -> None:
-        cls._api = api
-
     buf: Buffer
     marker: ExtMarker
     begin: NvimPos
@@ -43,20 +35,19 @@ class ExtMark:
 
     async def text(self) -> Sequence[str]:
         if end := self.end:
-            assert self._api
             return await self.buf.get_text(self.begin, end=end)
         else:
             return ()
 
 
-class Buffer(Ext):
+class Buffer(Ext, HasLocalCall):
     prefix = "nvim_buf"
 
     @classmethod
     async def list(cls, listed: bool) -> Sequence[Buffer]:
 
         if listed:
-            raw = await cls.api.execute(str, ":buffers")
+            raw = await cls.api.exec(str, ":buffers", True, prefix=cls.base_prefix)
 
             def parse(line: str) -> Iterator[str]:
                 for char in line.lstrip():
@@ -72,21 +63,24 @@ class Buffer(Ext):
 
             return tuple(cont())
         else:
-            return cast(Sequence[Buffer], await cls.api.list_bufs(NoneType))
+            return cast(
+                Sequence[Buffer],
+                await cls.api.list_bufs(NoneType, prefix=cls.base_prefix),
+            )
 
     @classmethod
     async def get_current(cls) -> Buffer:
-        return await cls.api.get_current_buf(Buffer)
+        return await cls.api.get_current_buf(Buffer, prefix=cls.base_prefix)
 
     @classmethod
     async def set_current(cls, buf: Buffer) -> None:
-        await cls.api.set_current_buf(NoneType, buf)
+        await cls.api.set_current_buf(NoneType, buf, prefix=cls.base_prefix)
 
     @classmethod
     async def create(
         cls, listed: bool, scratch: bool, wipe: bool, nofile: bool, noswap: bool
     ) -> Buffer:
-        buf = await cls.api.create_buf(Buffer, listed, scratch)
+        buf = await cls.api.create_buf(Buffer, listed, scratch, prefix=cls.base_prefix)
         atomic = Atomic()
 
         if wipe:
@@ -99,14 +93,10 @@ class Buffer(Ext):
         await atomic.commit(NoneType)
         return buf
 
-    @cached_property
-    def fn(self) -> Fn:
-        return Fn(api=self.api)
-
     async def delete(self) -> None:
         await self.api.delete(NoneType, self, {"force": True})
 
-    async def get_name(self) -> str:
+    async def get_name(self) -> Optional[str]:
         return await self.api.get_name(str, self)
 
     async def linefeed(self) -> str:
@@ -127,7 +117,7 @@ class Buffer(Ext):
         ft = await self.opts.get(str, "filetype")
         return ft
 
-    async def comment_string(self) -> Optional[Tuple[str, str]]:
+    async def commentstr(self) -> Optional[Tuple[str, str]]:
         if commentstr := await self.opts.get(str, "commentstring"):
             lhs, sep, rhs = commentstr.partition("%s")
             assert sep
@@ -152,7 +142,7 @@ class Buffer(Ext):
 
     async def get_text(self, begin: NvimPos, end: NvimPos) -> Sequence[str]:
         (r1, c1), (r2, c2) = begin, end
-        if self.api.has("nvim-0.6"):
+        if await self.api.has("nvim-0.6"):
             return cast(
                 Sequence[str],
                 await self.api.get_text(NoneType, self, r1, c1, r2, c2, {}),
@@ -180,7 +170,7 @@ class Buffer(Ext):
         await self.api.set_text(NoneType, self, r1, c1, r2, c2, text)
 
     async def clear_namespace(self, ns: NS, lo: int = 0, hi: int = -1) -> None:
-        await self.api._clear_namespace(NoneType, self, ns, lo, hi)
+        await self.api.clear_namespace(NoneType, self, ns, lo, hi)
 
     async def get_ext_marks(
         self, ns: NS, lo: int = 0, hi: int = -1
@@ -246,7 +236,10 @@ class Buffer(Ext):
 
     async def set_mark(self, mark: BufMarker, row: int, col: int) -> None:
         marked = f"'{mark}"
-        await self.fn.setpos(NoneType, marked, (self, row + 1, col + 1, 0))
+        lua = """
+        return vim.fn.setpos(unpack(argv))
+        """
+        await self.local_lua(NoneType, lua, marked, (self, row + 1, col + 1, 0))
 
     async def list_bookmarks(self) -> Mapping[BufMarker, NvimPos]:
         atomic = Atomic()
@@ -255,8 +248,8 @@ class Buffer(Ext):
         marks = cast(Sequence[NvimPos], await atomic.commit(NoneType))
 
         bookmarks = {
-            BufMarker(chr): mark
-            for chr, mark in zip(ascii_lowercase, marks)
-            if mark != (0, 0)
+            BufMarker(chr): (row - 1, col)
+            for chr, (row, col) in zip(ascii_lowercase, marks)
+            if (row, col) != (0, 0)
         }
         return bookmarks

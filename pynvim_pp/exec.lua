@@ -15,7 +15,7 @@ return (function(gns, lua_method, ...)
   end
 
   local acc = _G
-  for _, name in ipairs(vim.gsplit(lua_method, ".", true)) do
+  for name in vim.gsplit(lua_method, ".", true) do
     acc = acc[name]
   end
   return acc(unpack(argv))

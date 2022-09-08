@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from asyncio import gather
 from contextlib import asynccontextmanager
-from functools import cached_property, wraps
 from inspect import iscoroutinefunction
 from itertools import chain
 from os.path import normpath
 from pathlib import Path, PurePath
 from string import ascii_uppercase
-from sys import version_info
 from typing import (
     Any,
     AsyncIterator,
-    ByteString,
     Iterator,
     Mapping,
     NewType,
@@ -25,22 +22,18 @@ from typing import (
 )
 from uuid import UUID
 
-from msgpack import ExtType
-
 from .atomic import Atomic
 from .buffer import NS, Buffer
 from .handler import GLOBAL_NS, RPC, RPCallable
-from .lib import resolve_path
+from .lib import decode, resolve_path
 from .rpc import client
 from .tabpage import Tabpage
 from .types import (
     PARENT,
     Api,
-    Callback,
+    CastReturnAF,
     Chan,
-    Ext,
-    Fn,
-    HasAPI,
+    HasApi,
     HasChan,
     NoneType,
     NvimError,
@@ -52,7 +45,7 @@ from .types import (
 )
 from .window import Window
 
-_LUA_EXEC = (PARENT / "exec.lua").read_text("utf-8")
+_LUA_EXEC = decode((PARENT / "exec.lua").read_bytes().strip())
 
 
 _T = TypeVar("_T")
@@ -60,9 +53,7 @@ _T = TypeVar("_T")
 Marker = NewType("Marker", str)
 
 
-class _CUR(HasAPI):
-    prefix = "nvim"
-
+class _Cur(HasApi):
     async def get_line(self) -> str:
         return await self.api.get_current_line(str)
 
@@ -70,17 +61,30 @@ class _CUR(HasAPI):
         await self.api.set_current_line(NoneType, line)
 
 
-class _LUA(HasAPI):
-    prefix = "nvim"
+class _Vvars(HasApi):
+    async def get(self, ty: Type[_T], key: str) -> _T:
+        return await self.api.get_var(ty, key)
 
-    def __init__(self, chan: Chan, prefix: Sequence[str]) -> None:
-        self._chan = chan
+
+class _Fn(HasApi):
+    def __getattr__(self, attr: str) -> CastReturnAF:
+        async def cont(ty: Type[_T], *params: Any) -> _T:
+            return await self.api.call_function(ty, attr, params)
+
+        return cont
+
+    def __getitem__(self, attr: str) -> CastReturnAF:
+        return self.__getattr__(attr)
+
+
+class _Lua(HasApi, HasChan):
+    def __init__(self, prefix: Sequence[str]) -> None:
         self._prefix = prefix
 
-    def __getattr__(self, attr: str) -> _LUA:
-        return _LUA(chan=self._chan, prefix=(*self._prefix, attr))
+    def __getattr__(self, attr: str) -> _Lua:
+        return _Lua(prefix=(*self._prefix, attr))
 
-    def __getitem__(self, attr: str) -> _LUA:
+    def __getitem__(self, attr: str) -> _Lua:
         return self.__getattr__(attr)
 
     async def __call__(self, ty: Type[_T], *params: Any) -> _T:
@@ -97,70 +101,25 @@ class _LUA(HasAPI):
         return await self.api.exec_lua(ty, _LUA_EXEC, tuple(cont()))
 
 
-class _Wrap(RPClient):
-    def __init__(self, rpc: RPClient) -> None:
-        self._rpc = rpc
-        self._mapping = {ext.code: ext for ext in (Buffer, Window, Tabpage)}
-
-    def _unpack(self, val: Any) -> Any:
-        if isinstance(val, Sequence) and not isinstance(val, (str, ByteString)):
-            return tuple(map(self._unpack, val))
-        if isinstance(val, Mapping):
-            return {k: self._unpack(v) for k, v in val.items()}
-        if isinstance(val, ExtType):
-            v = cast(Any, val)
-            return self._mapping[v.code](data=v.data)
-        else:
-            return val
-
-    def _pack(self, val: Any) -> Any:
-        if isinstance(val, Sequence) and not isinstance(val, (str, ByteString)):
-            return tuple(map(self._unpack, val))
-        if isinstance(val, Mapping):
-            return {k: self._unpack(v) for k, v in val.items()}
-        if isinstance(val, Ext):
-            return ExtType(val.code, val.data)
-        else:
-            return val
-
-    async def notify(self, method: str, *params: Any) -> None:
-        await self._rpc.notify(method, *map(self._pack, params))
-
-    async def request(self, method: str, *params: Any) -> Sequence[Any]:
-        resp = await self._rpc.request(method, *map(self._pack, params))
-        return tuple(map(self._unpack, resp))
-
-    def on_callback(self, method: str, f: Callback) -> None:
-        @wraps(f)
-        async def ff(*params: Any) -> Any:
-            return await f(*map(self._unpack, params))
-
-        self._rpc.on_callback(method, f=ff)
-
-
-class _Nvim(HasAPI, HasChan):
-    prefix = "nvim"
+class _Nvim(HasApi, HasChan):
     chan = cast(Chan, None)
 
-    @cached_property
-    def lua(self) -> _LUA:
-        return _LUA(chan=self.chan, prefix=())
+    def __init__(self) -> None:
+        self.lua = _Lua(prefix=())
+        self.fn = _Fn()
+        self.vvars = _Vvars()
+        self.current = _Cur()
 
-    @cached_property
-    def fn(self) -> Fn:
-        return Fn(api=self.api)
-
-    @cached_property
-    def vars(self) -> Vars:
-        return Vars(api=self.api)
-
-    @cached_property
+    @property
     def opts(self) -> Opts:
-        return Opts(api=self.api)
+        return Opts(api=self.api, this=None)
 
-    @cached_property
-    def current(self) -> _CUR:
-        return _CUR()
+    @property
+    def vars(self) -> Vars:
+        return Vars(api=self.api, this=None)
+
+    async def exec(self, viml: str, capture: bool = False) -> str:
+        return await self.api.exec(str, viml, capture)
 
     async def size(self) -> Tuple[int, int]:
         with Atomic() as (atomic, ns):
@@ -179,7 +138,7 @@ class _Nvim(HasAPI, HasChan):
         error: bool = False,
     ) -> None:
         msg = sep.join(str(v) for v in chain((val,), vals)).rstrip()
-        if self.api.has("nvim-0.5"):
+        if await self.api.has("nvim-0.5"):
             a = (msg, "ErrorMsg") if error else (msg,)
             await self.api.echo(NoneType, (a,), True, {})
         else:
@@ -212,7 +171,9 @@ class _Nvim(HasAPI, HasChan):
         ns = await self.api.create_namespace(int, seed.hex)
         return NS(ns)
 
-    async def list_bookmarks(self) -> Mapping[Marker, Tuple[Path, NvimPos]]:
+    async def list_bookmarks(
+        self,
+    ) -> Mapping[Marker, Tuple[Path, Optional[Buffer], NvimPos]]:
         if await self.api.has("nvim-0.6"):
             with Atomic() as (atomic, ns):
                 ns.cwd = atomic.call_function("getcwd", ())
@@ -221,19 +182,23 @@ class _Nvim(HasAPI, HasChan):
                 pwd, *marks = cast(Any, await atomic.commit(NoneType))
 
             cwd = Path(cast(str, pwd))
-            marks = cast(Sequence[Tuple[int, int, Buffer, str]], marks)
+            marks = cast(Sequence[Tuple[int, int, int, str]], marks)
 
             acc = {
-                Marker(marker): (path, (row, col))
-                for marker, (row, col, _, path) in zip(ascii_uppercase, marks)
+                Marker(marker): (
+                    path,
+                    Buffer(data=bytes((bufnr,))) if bufnr != 0 else None,
+                    (row - 1, col),
+                )
+                for marker, (row, col, bufnr, path) in zip(ascii_uppercase, marks)
                 if (row, col) != (0, 0)
             }
             paths = await gather(
-                *(resolve_path(cwd, path=path) for path, _ in acc.values())
+                *(resolve_path(cwd, path=path) for path, _, _ in acc.values())
             )
             resolved = {
-                marker: (path, pos)
-                for (marker, (_, pos)), path in zip(acc.items(), paths)
+                marker: (path, buf, pos)
+                for (marker, (_, buf, pos)), path in zip(acc.items(), paths)
             }
             return resolved
         else:
@@ -277,41 +242,16 @@ class _Nvim(HasAPI, HasChan):
 @asynccontextmanager
 async def conn(socket: PurePath) -> AsyncIterator[RPClient]:
     async with client(socket) as rpc:
-        await rpc.notify(
-            "nvim_set_client_info",
-            PARENT.name,
-            {
-                "major": version_info.major,
-                "minor": version_info.minor,
-                "patch": version_info.micro,
-            },
-            "remote",
-            (),
-            {},
-        )
-        chan, meta = await rpc.request("nvim_get_api_info")
-
-        assert isinstance(meta, Mapping)
-        types = meta["types"]
-        assert isinstance(types, Mapping)
-
-        Buffer.init_code(code=types["Buffer"]["id"])
-        Window.init_code(code=types["Window"]["id"])
-        Tabpage.init_code(code=types["Tabpage"]["id"])
-
-        wrapped = _Wrap(rpc=rpc)
-
-        for cls in (_Nvim, Atomic, Buffer, Window, Tabpage, _LUA, _CUR):
-            c = cast(HasAPI, cls)
-            api = Api(rpc=wrapped, prefix=c.prefix)
+        for cls in (_Nvim, Atomic, Buffer, Window, Tabpage, _Lua, _Fn, _Vvars, _Cur):
+            c = cast(HasApi, cls)
+            api = Api(rpc=rpc, prefix=c.prefix)
             c.init_api(api=api)
 
-        ch = Chan(chan)
-        for cls in (_Nvim, RPC):
-            c = cast(HasChan, cls)
-            c.init_chan(chan=ch)
+        for cls in (_Nvim, _Lua, RPC):
+            cl = cast(HasChan, cls)
+            cl.init_chan(chan=rpc.chan)
 
-        yield wrapped
+        yield rpc
 
 
 Nvim = _Nvim()

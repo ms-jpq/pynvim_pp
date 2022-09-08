@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from math import floor
 from typing import AsyncIterator, Literal, Tuple, Union
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from .atomic import Atomic
 from .buffer import Buffer
@@ -9,8 +9,6 @@ from .lib import display_width
 from .nvim import Nvim
 from .types import NoneType, NvimPos
 from .window import Window
-
-FLOATWIN_VAR_NAME = f"float_win_group_{uuid4().hex}"
 
 
 @dataclass(frozen=True)
@@ -37,9 +35,9 @@ Border = Union[
 ]
 
 
-async def list_floatwins() -> AsyncIterator[Window]:
+async def list_floatwins(ns: UUID) -> AsyncIterator[Window]:
     for win in await Window.list():
-        if await win.vars.has(FLOATWIN_VAR_NAME):
+        if await win.vars.has(str(ns)):
             yield win
 
 
@@ -85,15 +83,16 @@ async def _open_float_win(
         "col": col,
         "focusable": focusable,
     }
-    if buf.api.has("nvim-0.5"):
+    if await Nvim.api.has("nvim-0.5"):
         opts.update(noautocmd=True, border=border)
 
-    win = await buf.api.open_win(Window, buf, True, opts)
+    win = await Nvim.api.open_win(Window, buf, True, opts)
     await win.opts.set("winhighlight", "Normal:Floating")
     return win
 
 
 async def open_float_win(
+    ns: UUID,
     margin: int,
     relsize: float,
     buf: Buffer,
@@ -123,8 +122,8 @@ async def open_float_win(
     uid = uuid4().hex
     atomic = Atomic()
 
-    atomic.win_set_var(buf, FLOATWIN_VAR_NAME, uid)
-    atomic.buf_set_var(buf, FLOATWIN_VAR_NAME, uid)
+    atomic.win_set_var(win, str(ns), uid)
+    atomic.buf_set_var(buf, str(ns), uid)
     await atomic.commit(NoneType)
 
     return FloatWin(uid=uid, win=win, buf=buf)

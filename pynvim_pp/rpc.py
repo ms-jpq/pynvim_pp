@@ -11,22 +11,29 @@ from enum import Enum, unique
 from functools import wraps
 from itertools import count
 from pathlib import PurePath
+from sys import version_info
+from traceback import format_exc
 from typing import (
     Any,
     AsyncIterable,
     AsyncIterator,
     Awaitable,
     Callable,
+    Coroutine,
+    Mapping,
     MutableMapping,
     Optional,
     Sequence,
-    cast,
+    Type,
 )
 
-from msgpack import Packer, Unpacker
+from msgpack import ExtType, Packer, Unpacker
 
+from .buffer import Buffer
 from .logging import log
-from .types import Callback, NvimError, RPClient
+from .tabpage import Tabpage
+from .types import PARENT, Callback, Chan, Ext, NvimError, RPClient
+from .window import Window
 
 
 @unique
@@ -38,18 +45,40 @@ class _MsgType(Enum):
 
 _RX_Q = MutableMapping[int, Future]
 _CALLBACKS = MutableMapping[
-    str, Callable[[Optional[int], Sequence[Any]], Awaitable[Any]]
+    str, Callable[[Optional[int], Sequence[Any]], Coroutine[Any, Any, Any]]
 ]
 
-_LIMIT = 2**16
+_LIMIT = 10**6
+
+
+def _pack(val: Any) -> ExtType:
+    if isinstance(val, Ext):
+        return ExtType(val.code, val.data)
+    else:
+        raise TypeError()
+
+
+class _Hooker:
+    def __init__(self) -> None:
+        self._mapping: Mapping[int, Type[Ext]] = {}
+
+    def init(self, *exts: Type[Ext]) -> None:
+        self._mapping = {cls.code: cls for cls in exts}
+
+    def ext_hook(self, code: int, data: bytes) -> Ext:
+        if cls := self._mapping.get(code):
+            return cls(data=data)
+        else:
+            raise RuntimeError((code, data))
 
 
 async def _connect(
     socket: PurePath,
     tx: AsyncIterable[Any],
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
+    hooker: _Hooker,
 ) -> None:
-    packer, unpacker = Packer(), Unpacker()
+    packer, unpacker = Packer(default=_pack), Unpacker(ext_hook=hooker.ext_hook)
     reader, writer = await open_unix_connection(socket)
 
     async def send() -> None:
@@ -73,16 +102,22 @@ class _RPClient(RPClient):
         self._loop, self._uids = get_event_loop(), count()
         self._tx, self._rx = tx, rx
         self._callbacks = notifs
+        self._chan: Optional[Chan] = None
+
+    @property
+    def chan(self) -> Chan:
+        assert self._chan
+        return self._chan
 
     async def notify(self, method: str, *params: Any) -> None:
         await self._tx.put((_MsgType.notif.value, method, params))
 
-    async def request(self, method: str, *params: Any) -> Sequence[Any]:
+    async def request(self, method: str, *params: Any) -> Any:
         uid = next(self._uids)
         fut = self._loop.create_future()
         self._rx[uid] = fut
         await self._tx.put((_MsgType.req.value, uid, method, params))
-        return cast(Sequence[Any], await fut)
+        return await fut
 
     def on_callback(self, method: str, f: Callback) -> None:
         assert method not in self._callbacks
@@ -95,7 +130,8 @@ class _RPClient(RPClient):
                 try:
                     resp = await f(*params)
                 except Exception as e:
-                    await self._tx.put((_MsgType.resp.value, msg_id, str(e), None))
+                    error = str((e, format_exc()))
+                    await self._tx.put((_MsgType.resp.value, msg_id, error, None))
                 else:
                     await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
 
@@ -104,7 +140,7 @@ class _RPClient(RPClient):
 
 @asynccontextmanager
 async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
-    tx_q: Queue = Queue(maxsize=1)
+    tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
     callbacks: _CALLBACKS = {}
 
@@ -122,29 +158,60 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
                 ty, method, params = frame
                 assert ty == _MsgType.notif.value
                 if cb := callbacks.get(method):
-                    cb(None, params)
+                    create_task(cb(None, params))
                 else:
                     log.warn("%s", f"No RPC listener for {method}")
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
                 if ty == _MsgType.resp.value:
+                    err, res = op1, op2
                     if fut := rx_q.get(msg_id):
-                        if op1:
-                            fut.set_exception(NvimError(op1))
+                        if err:
+                            fut.set_exception(NvimError(err))
                         else:
-                            fut.set_result(op2)
+                            fut.set_result(res)
                     else:
-                        log.warn("%s", f"Unexpected response message - {op1} | {op2}")
+                        log.warn("%s", f"Unexpected response message - {err} | {res}")
                 elif ty == _MsgType.req.value:
-                    if cb := callbacks.get(op1):
-                        cb(msg_id, op2)
+                    method, argv = op1, op2
+                    if cb := callbacks.get(method):
+                        create_task(cb(msg_id, argv))
                     else:
-                        log.warn("%s", f"No RPC listener for {op1}")
+                        log.warn("%s", f"No RPC listener for {method}")
                 else:
                     assert False
 
-    conn = create_task(_connect(socket, tx=tx(), rx=rx))
-    client = _RPClient(tx=tx_q, rx=rx_q, notifs=callbacks)
-    yield client
+    hooker = _Hooker()
+    conn = create_task(_connect(socket, tx=tx(), rx=rx, hooker=hooker))
+    rpc = _RPClient(tx=tx_q, rx=rx_q, notifs=callbacks)
+
+    await rpc.notify(
+        "nvim_set_client_info",
+        PARENT.name,
+        {
+            "major": version_info.major,
+            "minor": version_info.minor,
+            "patch": version_info.micro,
+        },
+        "remote",
+        (),
+        {},
+    )
+    chan, meta = await rpc.request("nvim_get_api_info")
+
+    assert isinstance(meta, Mapping)
+    types = meta.get("types")
+    error_info = meta.get("error_types")
+    assert isinstance(types, Mapping)
+    assert isinstance(error_info, Mapping)
+
+    Buffer.init_code(code=types["Buffer"]["id"])
+    Window.init_code(code=types["Window"]["id"])
+    Tabpage.init_code(code=types["Tabpage"]["id"])
+
+    rpc._chan = chan
+    hooker.init(Buffer, Window, Tabpage)
+
+    yield rpc
     await conn
