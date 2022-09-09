@@ -172,7 +172,7 @@ class Buffer(Ext, HasLocalCall):
     async def clear_namespace(self, ns: NS, lo: int = 0, hi: int = -1) -> None:
         await self.api.clear_namespace(NoneType, self, ns, lo, hi)
 
-    async def get_ext_marks(
+    async def get_extmarks(
         self, ns: NS, lo: int = 0, hi: int = -1
     ) -> Sequence[ExtMark]:
         marks = cast(
@@ -188,7 +188,7 @@ class Buffer(Ext, HasLocalCall):
         )
 
         def cont() -> Iterator[ExtMark]:
-            for row, col, idx, meta in marks:
+            for idx, row, col, meta in marks:
                 end = (
                     (end_row, end_col)
                     if (end_row := meta.get("end_row")) is not None
@@ -206,7 +206,7 @@ class Buffer(Ext, HasLocalCall):
 
         return tuple(cont())
 
-    async def set_ext_marks(self, ns: NS, extmarks: Iterable[ExtMark]) -> None:
+    async def set_extmarks(self, ns: NS, extmarks: Iterable[ExtMark]) -> None:
         atomic = Atomic()
         for mark in extmarks:
             (r1, c1) = mark.begin
