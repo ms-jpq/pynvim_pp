@@ -62,6 +62,10 @@ class RPCallable(Protocol[_T_co]):
         ...
 
     @property
+    def schedule(self) -> bool:
+        ...
+
+    @property
     def namespace(self) -> str:
         ...
 

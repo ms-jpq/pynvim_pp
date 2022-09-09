@@ -1,4 +1,4 @@
-return (function(gns, method, chan, uuid, ns, name)
+return (function(gns, method, chan, schedule, uuid, ns, name)
   local global_namespace = _G[gns] or {}
   _G[gns] = global_namespace
 
@@ -22,7 +22,15 @@ return (function(gns, method, chan, uuid, ns, name)
       end
     end
 
-    return m(chan, name, unpack(argv))
+    if schedule then
+      vim.schedule(
+        function()
+          m(chan, name, unpack(argv))
+        end
+      )
+    else
+      return m(chan, name, unpack(argv))
+    end
   end
 
   namespace[name] = fn

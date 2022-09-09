@@ -87,9 +87,10 @@ class _Lua(HasApi, HasChan):
     def __getitem__(self, attr: str) -> _Lua:
         return self.__getattr__(attr)
 
-    async def __call__(self, ty: Type[_T], *params: Any) -> _T:
+    async def __call__(self, ty: Type[_T], *params: Any, schedule: bool = False) -> _T:
         def cont() -> Iterator[Any]:
             yield GLOBAL_NS
+            yield schedule
             yield ".".join(self._prefix)
             for param in params:
                 if iscoroutinefunction(param):

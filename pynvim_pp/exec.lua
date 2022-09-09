@@ -1,4 +1,4 @@
-return (function(gns, lua_method, ...)
+return (function(gns, schedule, lua_method, ...)
   local global_namespace = _G[gns] or {}
 
   local argv = {...}
@@ -18,5 +18,14 @@ return (function(gns, lua_method, ...)
   for name in vim.gsplit(lua_method, ".", true) do
     acc = acc[name]
   end
-  return acc(unpack(argv))
+
+  if schedule then
+    vim.schedule(
+      function()
+        acc(unpack(argv))
+      end
+    )
+  else
+    return acc(unpack(argv))
+  end
 end)(...)

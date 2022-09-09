@@ -31,7 +31,15 @@ def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
     method = "rpcrequest" if handler.blocking else "rpcnotify"
     atomic.exec_lua(
         _LUA_PRC,
-        (GLOBAL_NS, method, chan, str(handler.uuid), handler.namespace, handler.name),
+        (
+            GLOBAL_NS,
+            method,
+            chan,
+            handler.schedule,
+            str(handler.uuid),
+            handler.namespace,
+            handler.name,
+        ),
     )
 
 
@@ -60,7 +68,8 @@ class RPC(HasChan):
 
     def __call__(
         self,
-        blocking: bool,
+        blocking: bool = True,
+        schedule: bool = False,
         name: Optional[str] = None,
     ) -> Callable[[Callable[..., Coroutine[Any, Any, _T]]], RPCallable[_T]]:
         def decor(handler: Callable[..., Coroutine[Any, Any, _T]]) -> RPCallable[_T]:
@@ -69,6 +78,7 @@ class RPC(HasChan):
 
             setattr(handler, "uuid", uuid4())
             setattr(handler, "blocking", blocking)
+            setattr(handler, "schedule", schedule)
             setattr(handler, "namespace", self._namespace)
             setattr(handler, "name", h_name)
 
