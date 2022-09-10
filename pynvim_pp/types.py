@@ -73,7 +73,7 @@ class RPCallable(Protocol[_T_co]):
     def method(self) -> Method:
         ...
 
-    async def __call__(self, *args: Any, **kwargs: Any) -> Awaitable[_T_co]:
+    async def __call__(self, *args: Any, **kwargs: Any) -> _T_co:
         ...
 
 
