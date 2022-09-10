@@ -8,7 +8,7 @@ from asyncio import (
 )
 from contextlib import asynccontextmanager
 from enum import Enum, unique
-from functools import wraps
+from functools import cached_property, wraps
 from itertools import count
 from pathlib import PurePath
 from sys import version_info
@@ -104,7 +104,7 @@ class _RPClient(RPClient):
         self._methods = notifs
         self._chan: Optional[Chan] = None
 
-    @property
+    @cached_property
     def chan(self) -> Chan:
         assert self._chan
         return self._chan

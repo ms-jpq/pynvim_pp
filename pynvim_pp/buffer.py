@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from math import ceil, log
 from string import ascii_lowercase
 from typing import (
@@ -99,7 +100,7 @@ class Buffer(Ext, HasLocalCall):
         await atomic.commit(NoneType)
         return buf
 
-    @property
+    @cached_property
     def number(self) -> BufNum:
         return BufNum(int.from_bytes(self.data, byteorder="big"))
 

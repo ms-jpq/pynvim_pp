@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from asyncio import gather
 from contextlib import asynccontextmanager
+from functools import cached_property
 from inspect import iscoroutinefunction
 from itertools import chain
 from os.path import normpath
@@ -112,11 +113,11 @@ class _Nvim(HasApi, HasChan):
         self.vvars = _Vvars()
         self.current = _Cur()
 
-    @property
+    @cached_property
     def opts(self) -> Opts:
         return Opts(api=self.api, this=None)
 
-    @property
+    @cached_property
     def vars(self) -> Vars:
         return Vars(api=self.api, this=None)
 
