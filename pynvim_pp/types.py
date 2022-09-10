@@ -35,9 +35,9 @@ class NvimError(Exception):
 
 Chan = NewType("Chan", int)
 ExtData = NewType("ExtData", bytes)
+Method = NewType("Method", str)
 BufNamespace = NewType("BufNamespace", int)
 NvimPos = Tuple[int, int]
-Callback = Callable[..., Awaitable[Any]]
 
 
 class CastReturnAF(Protocol):
@@ -70,7 +70,7 @@ class RPCallable(Protocol[_T_co]):
         ...
 
     @property
-    def name(self) -> str:
+    def method(self) -> Method:
         ...
 
     async def __call__(self, *args: Any, **kwargs: Any) -> Awaitable[_T_co]:
@@ -84,15 +84,15 @@ class RPClient(Protocol):
         ...
 
     @abstractmethod
-    async def notify(self, method: str, *params: Any) -> None:
+    async def notify(self, method: Method, *params: Any) -> None:
         ...
 
     @abstractmethod
-    async def request(self, method: str, *params: Any) -> Any:
+    async def request(self, method: Method, *params: Any) -> Any:
         ...
 
     @abstractmethod
-    def on_callback(self, method: str, f: Callback) -> None:
+    def register(self, f: RPCallable) -> None:
         ...
 
 
@@ -105,7 +105,7 @@ class Api:
 
     def __getattr__(self, attr: str) -> ApiReturnAF:
         async def cont(ty: Type[_T], *params: Any, prefix: Optional[str] = None) -> _T:
-            method = f"{prefix or self.prefix}_{attr}"
+            method = Method(f"{prefix or self.prefix}_{attr}")
             resp = await self._rpc.request(method, *params)
             return cast(_T, resp)
 
@@ -115,7 +115,9 @@ class Api:
         if (has := self._features.get(feature)) is not None:
             return has
         else:
-            has = await self._rpc.request("nvim_call_function", "has", (feature,))
+            has = await self._rpc.request(
+                Method("nvim_call_function"), "has", (feature,)
+            )
             self._features[feature] = has
             return has
 

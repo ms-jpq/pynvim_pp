@@ -32,7 +32,7 @@ from msgpack import ExtType, Packer, Unpacker
 from .buffer import Buffer
 from .logging import log
 from .tabpage import Tabpage
-from .types import PARENT, Callback, Chan, Ext, ExtData, NvimError, RPClient
+from .types import PARENT, Chan, Ext, ExtData, Method, NvimError, RPCallable, RPClient
 from .window import Window
 
 
@@ -44,7 +44,7 @@ class _MsgType(Enum):
 
 
 _RX_Q = MutableMapping[int, Future]
-_CALLBACKS = MutableMapping[
+_METHODS = MutableMapping[
     str, Callable[[Optional[int], Sequence[Any]], Coroutine[Any, Any, Any]]
 ]
 
@@ -98,10 +98,10 @@ async def _connect(
 
 
 class _RPClient(RPClient):
-    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _CALLBACKS) -> None:
+    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _METHODS) -> None:
         self._loop, self._uids = get_event_loop(), count()
         self._tx, self._rx = tx, rx
-        self._callbacks = notifs
+        self._methods = notifs
         self._chan: Optional[Chan] = None
 
     @property
@@ -109,18 +109,18 @@ class _RPClient(RPClient):
         assert self._chan
         return self._chan
 
-    async def notify(self, method: str, *params: Any) -> None:
+    async def notify(self, method: Method, *params: Any) -> None:
         await self._tx.put((_MsgType.notif.value, method, params))
 
-    async def request(self, method: str, *params: Any) -> Any:
+    async def request(self, method: Method, *params: Any) -> Any:
         uid = next(self._uids)
         fut = self._loop.create_future()
         self._rx[uid] = fut
         await self._tx.put((_MsgType.req.value, uid, method, params))
         return await fut
 
-    def on_callback(self, method: str, f: Callback) -> None:
-        assert method not in self._callbacks
+    def register(self, f: RPCallable) -> None:
+        assert f.method not in self._methods
 
         @wraps(f)
         async def wrapped(msg_id: Optional[int], params: Sequence[Any]) -> None:
@@ -135,14 +135,14 @@ class _RPClient(RPClient):
                 else:
                     await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
 
-        self._callbacks[method] = wrapped
+        self._methods[f.method] = wrapped
 
 
 @asynccontextmanager
 async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
-    callbacks: _CALLBACKS = {}
+    methods: _METHODS = {}
 
     async def tx() -> AsyncIterator[Any]:
         while True:
@@ -157,7 +157,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
             if length == 3:
                 ty, method, params = frame
                 assert ty == _MsgType.notif.value
-                if cb := callbacks.get(method):
+                if cb := methods.get(method):
                     create_task(cb(None, params))
                 else:
                     log.warn("%s", f"No RPC listener for {method}")
@@ -175,7 +175,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
                         log.warn("%s", f"Unexpected response message - {err} | {res}")
                 elif ty == _MsgType.req.value:
                     method, argv = op1, op2
-                    if cb := callbacks.get(method):
+                    if cb := methods.get(method):
                         create_task(cb(msg_id, argv))
                     else:
                         log.warn("%s", f"No RPC listener for {method}")
@@ -184,10 +184,10 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
 
     hooker = _Hooker()
     conn = create_task(_connect(socket, tx=tx(), rx=rx, hooker=hooker))
-    rpc = _RPClient(tx=tx_q, rx=rx_q, notifs=callbacks)
+    rpc = _RPClient(tx=tx_q, rx=rx_q, notifs=methods)
 
     await rpc.notify(
-        "nvim_set_client_info",
+        Method("nvim_set_client_info"),
         PARENT.name,
         {
             "major": version_info.major,
@@ -198,7 +198,7 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
         (),
         {},
     )
-    chan, meta = await rpc.request("nvim_get_api_info")
+    chan, meta = await rpc.request(Method("nvim_get_api_info"))
 
     assert isinstance(meta, Mapping)
     types = meta.get("types")

@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from .atomic import Atomic
 from .lib import decode
-from .types import PARENT, Chan, HasChan, RPCallable
+from .types import PARENT, Chan, HasChan, Method, RPCallable
 
 _T = TypeVar("_T")
 
@@ -38,15 +38,15 @@ def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
             handler.schedule,
             str(handler.uuid),
             handler.namespace,
-            handler.name,
+            handler.method,
         ),
     )
 
 
 def _new_viml_func(atomic: Atomic, handler: RPCallable[Any]) -> None:
     viml = f"""
-    function! {handler.name}(...)
-      return luaeval('_G["{handler.namespace}"]["{handler.name}"](unpack(_A))', a:000)
+    function! {handler.method}(...)
+      return luaeval('_G["{handler.namespace}"]["{handler.method}"](unpack(_A))', a:000)
     endfunction
     """
     atomic.command(viml)
@@ -62,7 +62,7 @@ class RPC(HasChan):
         namespace: str,
         name_gen: Callable[[Callable[..., Awaitable[Any]]], str] = _name_gen,
     ) -> None:
-        self._handlers: MutableMapping[str, RPCallable[Any]] = {}
+        self._handlers: MutableMapping[Method, RPCallable[Any]] = {}
         self._namespace = namespace
         self._name_gen = name_gen
 
@@ -74,22 +74,22 @@ class RPC(HasChan):
     ) -> Callable[[Callable[..., Coroutine[Any, Any, _T]]], RPCallable[_T]]:
         def decor(handler: Callable[..., Coroutine[Any, Any, _T]]) -> RPCallable[_T]:
             assert iscoroutinefunction(handler)
-            h_name = name or self._name_gen(cast(Any, handler))
+            method = Method(name or self._name_gen(cast(Any, handler)))
 
             setattr(handler, "uuid", uuid4())
             setattr(handler, "blocking", blocking)
             setattr(handler, "schedule", schedule)
             setattr(handler, "namespace", self._namespace)
-            setattr(handler, "name", h_name)
+            setattr(handler, "method", method)
 
-            self._handlers[h_name] = cast(RPCallable, handler)
+            self._handlers[method] = cast(RPCallable, handler)
             return cast(RPCallable[_T], cast(Any, handler))
 
         return decor
 
-    def drain(self) -> Tuple[Atomic, Mapping[str, RPCallable[Any]]]:
+    def drain(self) -> Tuple[Atomic, Mapping[Method, RPCallable[Any]]]:
         atomic = Atomic()
-        specs: MutableMapping[str, RPCallable[Any]] = {}
+        specs: MutableMapping[Method, RPCallable[Any]] = {}
         while self._handlers:
             name, handler = self._handlers.popitem()
             _new_lua_func(atomic, chan=self.chan, handler=handler)
