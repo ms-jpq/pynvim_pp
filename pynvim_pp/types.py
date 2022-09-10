@@ -34,6 +34,8 @@ class NvimError(Exception):
 
 
 Chan = NewType("Chan", int)
+BufNamespace = NewType("BufNamespace", int)
+NvimPos = Tuple[int, int]
 Callback = Callable[..., Awaitable[Any]]
 
 
@@ -47,9 +49,6 @@ class ApiReturnAF(Protocol):
         self, ty: Type[_T], *args: Any, prefix: Optional[str] = None
     ) -> _T:
         ...
-
-
-NvimPos = Tuple[int, int]
 
 
 class RPCallable(Protocol[_T_co]):

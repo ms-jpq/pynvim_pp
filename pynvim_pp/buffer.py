@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import ceil, log
 from string import ascii_lowercase
 from typing import (
     Any,
@@ -18,9 +19,8 @@ from typing import (
 
 from .atomic import Atomic
 from .lib import decode, encode
-from .types import Ext, HasLocalCall, NoneType, NvimPos
+from .types import BufNamespace, Ext, HasLocalCall, NoneType, NvimPos
 
-NS = NewType("NS", int)
 ExtMarker = NewType("ExtMarker", int)
 BufMarker = NewType("BufMarker", str)
 
@@ -44,6 +44,11 @@ class Buffer(Ext, HasLocalCall):
     prefix = "nvim_buf"
 
     @classmethod
+    def from_int(cls, num: int) -> Buffer:
+        length = ceil(log(num) / log(256))
+        return Buffer(data=num.to_bytes(length, byteorder="big"))
+
+    @classmethod
     async def list(cls, listed: bool) -> Sequence[Buffer]:
 
         if listed:
@@ -59,7 +64,7 @@ class Buffer(Ext, HasLocalCall):
             def cont() -> Iterator[Buffer]:
                 for line in raw.strip().splitlines():
                     num = int("".join(parse(line)))
-                    yield Buffer(data=bytes((num,)))
+                    yield cls.from_int(num)
 
             return tuple(cont())
         else:
@@ -169,11 +174,13 @@ class Buffer(Ext, HasLocalCall):
         (r1, c1), (r2, c2) = begin, end
         await self.api.set_text(NoneType, self, r1, c1, r2, c2, text)
 
-    async def clear_namespace(self, ns: NS, lo: int = 0, hi: int = -1) -> None:
+    async def clear_namespace(
+        self, ns: BufNamespace, lo: int = 0, hi: int = -1
+    ) -> None:
         await self.api.clear_namespace(NoneType, self, ns, lo, hi)
 
     async def get_extmarks(
-        self, ns: NS, lo: int = 0, hi: int = -1
+        self, ns: BufNamespace, lo: int = 0, hi: int = -1
     ) -> Sequence[ExtMark]:
         marks = cast(
             Sequence[Tuple[int, int, int, Mapping[str, Any]]],
@@ -206,7 +213,7 @@ class Buffer(Ext, HasLocalCall):
 
         return tuple(cont())
 
-    async def set_extmarks(self, ns: NS, extmarks: Iterable[ExtMark]) -> None:
+    async def set_extmarks(self, ns: BufNamespace, extmarks: Iterable[ExtMark]) -> None:
         atomic = Atomic()
         for mark in extmarks:
             (r1, c1) = mark.begin
@@ -221,7 +228,9 @@ class Buffer(Ext, HasLocalCall):
 
         await atomic.commit(NoneType)
 
-    async def del_extmarks(self, ns: NS, markers: Iterable[ExtMarker]) -> None:
+    async def del_extmarks(
+        self, ns: BufNamespace, markers: Iterable[ExtMarker]
+    ) -> None:
         atomic = Atomic()
         for marker in markers:
             atomic.buf_del_extmark(self, ns, marker)

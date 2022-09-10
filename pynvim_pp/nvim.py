@@ -23,7 +23,7 @@ from typing import (
 from uuid import UUID
 
 from .atomic import Atomic
-from .buffer import NS, Buffer
+from .buffer import Buffer
 from .handler import GLOBAL_NS, RPC, RPCallable
 from .lib import decode, resolve_path
 from .rpc import client
@@ -31,6 +31,7 @@ from .tabpage import Tabpage
 from .types import (
     PARENT,
     Api,
+    BufNamespace,
     CastReturnAF,
     Chan,
     HasApi,
@@ -168,9 +169,9 @@ class _Nvim(HasApi, HasChan):
         resolved = await gather(*(resolve_path(cwd, path=path) for path in paths))
         return tuple(path for path in resolved if path)
 
-    async def create_namespace(self, seed: UUID) -> NS:
+    async def create_namespace(self, seed: UUID) -> BufNamespace:
         ns = await self.api.create_namespace(int, seed.hex)
-        return NS(ns)
+        return BufNamespace(ns)
 
     async def list_bookmarks(
         self,
@@ -188,7 +189,7 @@ class _Nvim(HasApi, HasChan):
             acc = {
                 Marker(marker): (
                     path,
-                    Buffer(data=bytes((bufnr,))) if bufnr != 0 else None,
+                    Buffer.from_int(bufnr) if bufnr != 0 else None,
                     (row - 1, col),
                 )
                 for marker, (row, col, bufnr, path) in zip(ascii_uppercase, marks)

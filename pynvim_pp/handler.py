@@ -46,7 +46,7 @@ def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
 def _new_viml_func(atomic: Atomic, handler: RPCallable[Any]) -> None:
     viml = f"""
     function! {handler.name}(...)
-      return luaeval('_G["{GLOBAL_NS}"]["{handler.uuid}"](unpack(_A))', a:000)
+      return luaeval('_G["{handler.namespace}"]["{handler.name}"](unpack(_A))', a:000)
     endfunction
     """
     atomic.command(viml)
