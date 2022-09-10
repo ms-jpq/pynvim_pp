@@ -45,7 +45,7 @@ class Buffer(Ext, HasLocalCall):
 
     @classmethod
     def from_int(cls, num: int) -> Buffer:
-        length = ceil(log(num) / log(256))
+        length = ceil(log(num) / log(255))
         return Buffer(data=num.to_bytes(length, byteorder="big"))
 
     @classmethod
