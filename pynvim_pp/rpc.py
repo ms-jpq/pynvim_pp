@@ -32,7 +32,7 @@ from msgpack import ExtType, Packer, Unpacker
 from .buffer import Buffer
 from .logging import log
 from .tabpage import Tabpage
-from .types import PARENT, Callback, Chan, Ext, NvimError, RPClient
+from .types import PARENT, Callback, Chan, Ext, ExtData, NvimError, RPClient
 from .window import Window
 
 
@@ -67,7 +67,7 @@ class _Hooker:
 
     def ext_hook(self, code: int, data: bytes) -> Ext:
         if cls := self._mapping.get(code):
-            return cls(data=data)
+            return cls(data=ExtData(data))
         else:
             raise RuntimeError((code, data))
 

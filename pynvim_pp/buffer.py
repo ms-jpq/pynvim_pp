@@ -19,7 +19,7 @@ from typing import (
 
 from .atomic import Atomic
 from .lib import decode, encode
-from .types import BufNamespace, Ext, HasLocalCall, NoneType, NvimPos
+from .types import BufNamespace, Ext, ExtData, HasLocalCall, NoneType, NvimPos
 
 ExtMarker = NewType("ExtMarker", int)
 BufMarker = NewType("BufMarker", str)
@@ -46,7 +46,7 @@ class Buffer(Ext, HasLocalCall):
     @classmethod
     def from_int(cls, num: int) -> Buffer:
         length = max(1, ceil(log(num) / log(255)))
-        return Buffer(data=num.to_bytes(length, byteorder="big"))
+        return Buffer(data=ExtData(num.to_bytes(length, byteorder="big")))
 
     @classmethod
     async def list(cls, listed: bool) -> Sequence[Buffer]:

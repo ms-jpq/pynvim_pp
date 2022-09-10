@@ -34,6 +34,7 @@ class NvimError(Exception):
 
 
 Chan = NewType("Chan", int)
+ExtData = NewType("ExtData", bytes)
 BufNamespace = NewType("BufNamespace", int)
 NvimPos = Tuple[int, int]
 Callback = Callable[..., Awaitable[Any]]
@@ -190,8 +191,8 @@ class Ext(HasApi):
         assert isinstance(code, int)
         cls.code = code
 
-    def __init__(self, data: bytes) -> None:
-        self.data = data
+    def __init__(self, data: ExtData) -> None:
+        self.data = ExtData(data)
         self.vars = Vars(self.api, this=self)
         self.opts = Opts(self.api, this=self)
 
