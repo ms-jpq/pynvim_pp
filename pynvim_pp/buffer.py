@@ -98,8 +98,15 @@ class Buffer(Ext, HasLocalCall):
         await atomic.commit(NoneType)
         return buf
 
+    @property
+    def number(self) -> int:
+        return int.from_bytes(self.data, byteorder="big")
+
     async def delete(self) -> None:
-        await self.api.delete(NoneType, self, {"force": True})
+        if await self.api.has("nvim-0.5"):
+            await self.api.delete(NoneType, self, {"force": True})
+        else:
+            await self.api.exec(str, f"bwipeout! {self.number}", False, prefix="nvim")
 
     async def get_name(self) -> Optional[str]:
         return await self.api.get_name(str, self)
