@@ -23,6 +23,7 @@ from .types import BufNamespace, Ext, ExtData, HasLocalCall, NoneType, NvimPos
 
 ExtMarker = NewType("ExtMarker", int)
 BufMarker = NewType("BufMarker", str)
+BufNum = NewType("BufNum", int)
 
 
 @dataclass(frozen=True)
@@ -99,8 +100,8 @@ class Buffer(Ext, HasLocalCall):
         return buf
 
     @property
-    def number(self) -> int:
-        return int.from_bytes(self.data, byteorder="big")
+    def number(self) -> BufNum:
+        return BufNum(int.from_bytes(self.data, byteorder="big"))
 
     async def delete(self) -> None:
         if await self.api.has("nvim-0.5"):

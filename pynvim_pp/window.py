@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Sequence, cast
+from typing import NewType, Sequence, Tuple, cast
 
 from .buffer import Buffer
 from .types import Ext, HasLocalCall, NoneType, NvimPos
+
+WinNum = NewType("WinNum", int)
 
 
 class Window(Ext, HasLocalCall):
@@ -26,6 +28,9 @@ class Window(Ext, HasLocalCall):
     async def close(self) -> None:
         await self.api.close(NoneType, self, True)
 
+    async def get_number(self) -> WinNum:
+        return WinNum(await self.api.get_number(int, self))
+
     async def get_buf(self) -> Buffer:
         return await self.api.get_buf(Buffer, self)
 
@@ -38,3 +43,18 @@ class Window(Ext, HasLocalCall):
 
     async def set_cursor(self, row: int, col: int) -> None:
         await self.api.set_cursor(NoneType, self, (row + 1, col))
+
+    async def get_height(self) -> int:
+        return await self.api.get_height(int, self)
+
+    async def set_height(self, height: int) -> None:
+        await self.api.set_height(NoneType, self, height)
+
+    async def get_width(self) -> int:
+        return await self.api.get_width(int, self)
+
+    async def set_width(self, height: int) -> None:
+        await self.api.set_width(NoneType, self, height)
+
+    async def get_position(self) -> Tuple[int, int]:
+        return cast(Tuple[int, int], await self.api.get_position(NoneType, self))
