@@ -47,7 +47,7 @@ _RX_Q = MutableMapping[int, Future]
 _METHODS = MutableMapping[
     str, Callable[[Optional[int], Sequence[Any]], Coroutine[Any, Any, Any]]
 ]
-RPCdefault = Callable[[MsgType, str, Sequence[Any]], Coroutine[Any, Any, Any]]
+RPCdefault = Callable[[MsgType, Method, Sequence[Any]], Coroutine[Any, Any, Any]]
 
 _LIMIT = 10**6
 
