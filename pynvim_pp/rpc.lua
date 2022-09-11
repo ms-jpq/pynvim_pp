@@ -5,7 +5,9 @@ return (function(gns, method, chan, schedule, uuid, ns, name)
   local namespace = _G[ns] or {}
   _G[ns] = namespace
 
-  local m = vim[method] or vim.fn[method]
+  local m = vim[method] or function(...)
+      vim.api.nvim_call_function(method, {...})
+    end
 
   local fn = function(...)
     local argv = {...}

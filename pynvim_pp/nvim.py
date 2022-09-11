@@ -101,7 +101,7 @@ class _Lua(HasApi, HasChan):
                 else:
                     yield param
 
-        return await self.api.exec_lua(ty, _LUA_EXEC, tuple(cont()))
+        return await self.api.execute_lua(ty, _LUA_EXEC, tuple(cont()))
 
 
 class _Nvim(HasApi, HasChan):
@@ -121,8 +121,8 @@ class _Nvim(HasApi, HasChan):
     def vars(self) -> Vars:
         return Vars(api=self.api, this=None)
 
-    async def exec(self, viml: str, capture: bool = False) -> str:
-        return await self.api.exec(str, viml, capture)
+    async def exec(self, viml: str) -> str:
+        return await self.api.command(str, viml)
 
     async def size(self) -> Tuple[int, int]:
         with Atomic() as (atomic, ns):

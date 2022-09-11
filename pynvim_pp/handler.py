@@ -29,7 +29,7 @@ _LUA_PRC = decode((PARENT / "rpc.lua").read_bytes().strip())
 
 def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
     method = "rpcrequest" if handler.blocking else "rpcnotify"
-    atomic.exec_lua(
+    atomic.execute_lua(
         _LUA_PRC,
         (
             GLOBAL_NS,

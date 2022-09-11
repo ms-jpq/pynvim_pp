@@ -174,7 +174,7 @@ class HasApi:
 class HasLocalCall(HasApi):
     async def local_lua(self, ty: Type[_T], lua: str, *argv: Any) -> _T:
         fn = _LUA_CALL.substitute(BODY=linesep + lua)
-        return await self.api.exec_lua(ty, fn, (self.prefix, self, *argv))
+        return await self.api.execute_lua(ty, fn, (self.prefix, self, *argv))
 
 
 class HasChan:

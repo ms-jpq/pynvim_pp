@@ -30,7 +30,7 @@ async def _open_preview() -> Tuple[Window, Buffer]:
         return win, buf
     else:
         with Atomic() as (atomic, ns):
-            ns._ = atomic.command("new")
+            atomic.command("new")
             ns.height = atomic.get_option("previewheight")
             ns.win = atomic.get_current_win()
             await atomic.commit(NoneType)

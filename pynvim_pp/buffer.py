@@ -54,7 +54,7 @@ class Buffer(Ext, HasLocalCall):
     async def list(cls, listed: bool) -> Sequence[Buffer]:
 
         if listed:
-            raw = await cls.api.exec(str, ":buffers", True, prefix=cls.base_prefix)
+            raw = await cls.api.command_output(str, ":buffers", prefix=cls.base_prefix)
 
             def parse(line: str) -> Iterator[str]:
                 for char in line.lstrip():
@@ -108,7 +108,7 @@ class Buffer(Ext, HasLocalCall):
         if await self.api.has("nvim-0.5"):
             await self.api.delete(NoneType, self, {"force": True})
         else:
-            await self.api.exec(str, f"bwipeout! {self.number}", False, prefix="nvim")
+            await self.api.command(str, f"bwipeout! {self.number}", prefix="nvim")
 
     async def get_name(self) -> Optional[str]:
         return await self.api.get_name(str, self)
@@ -255,7 +255,7 @@ class Buffer(Ext, HasLocalCall):
     async def set_mark(self, mark: BufMarker, row: int, col: int) -> None:
         marked = f"'{mark}"
         lua = """
-        return vim.fn.setpos(unpack(argv))
+        return vim.api.nvim_call_function("setpos", argv)
         """
         await self.local_lua(NoneType, lua, marked, (self, row + 1, col + 1, 0))
 
