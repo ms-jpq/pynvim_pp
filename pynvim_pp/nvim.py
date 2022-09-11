@@ -27,7 +27,7 @@ from .atomic import Atomic
 from .buffer import Buffer
 from .handler import GLOBAL_NS, RPC, RPCallable
 from .lib import decode, resolve_path
-from .rpc import client
+from .rpc import RPCdefault, client
 from .tabpage import Tabpage
 from .types import (
     PARENT,
@@ -243,8 +243,8 @@ class _Nvim(HasApi, HasChan):
 
 
 @asynccontextmanager
-async def conn(socket: PurePath) -> AsyncIterator[RPClient]:
-    async with client(socket) as rpc:
+async def conn(socket: PurePath, default: RPCdefault) -> AsyncIterator[RPClient]:
+    async with client(socket, default=default) as rpc:
         for cls in (_Nvim, Atomic, Buffer, Window, Tabpage, _Lua, _Fn, _Vvars, _Cur):
             c = cast(HasApi, cls)
             api = Api(rpc=rpc, prefix=c.prefix)

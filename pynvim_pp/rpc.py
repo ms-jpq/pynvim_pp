@@ -37,7 +37,7 @@ from .window import Window
 
 
 @unique
-class _MsgType(Enum):
+class MsgType(Enum):
     req = 0
     resp = 1
     notif = 2
@@ -47,6 +47,7 @@ _RX_Q = MutableMapping[int, Future]
 _METHODS = MutableMapping[
     str, Callable[[Optional[int], Sequence[Any]], Coroutine[Any, Any, Any]]
 ]
+RPCdefault = Callable[[MsgType, str, Sequence[Any]], Coroutine[Any, Any, Any]]
 
 _LIMIT = 10**6
 
@@ -110,13 +111,13 @@ class _RPClient(RPClient):
         return self._chan
 
     async def notify(self, method: Method, *params: Any) -> None:
-        await self._tx.put((_MsgType.notif.value, method, params))
+        await self._tx.put((MsgType.notif.value, method, params))
 
     async def request(self, method: Method, *params: Any) -> Any:
         uid = next(self._uids)
         fut = self._loop.create_future()
         self._rx[uid] = fut
-        await self._tx.put((_MsgType.req.value, uid, method, params))
+        await self._tx.put((MsgType.req.value, uid, method, params))
         return await fut
 
     def register(self, f: RPCallable) -> None:
@@ -131,15 +132,15 @@ class _RPClient(RPClient):
                     resp = await f(*params)
                 except Exception as e:
                     error = str((e, format_exc()))
-                    await self._tx.put((_MsgType.resp.value, msg_id, error, None))
+                    await self._tx.put((MsgType.resp.value, msg_id, error, None))
                 else:
-                    await self._tx.put((_MsgType.resp.value, msg_id, None, resp))
+                    await self._tx.put((MsgType.resp.value, msg_id, None, resp))
 
         self._methods[f.method] = wrapped
 
 
 @asynccontextmanager
-async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
+async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClient]:
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
     methods: _METHODS = {}
@@ -156,15 +157,15 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
             length = len(frame)
             if length == 3:
                 ty, method, params = frame
-                assert ty == _MsgType.notif.value
+                assert ty == MsgType.notif.value
                 if cb := methods.get(method):
                     create_task(cb(None, params))
                 else:
-                    log.warn("%s", f"No RPC listener for {method}")
+                    create_task(default(MsgType.notif, method, params))
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
-                if ty == _MsgType.resp.value:
+                if ty == MsgType.resp.value:
                     err, res = op1, op2
                     if fut := rx_q.get(msg_id):
                         if err:
@@ -173,12 +174,12 @@ async def client(socket: PurePath) -> AsyncIterator[_RPClient]:
                             fut.set_result(res)
                     else:
                         log.warn("%s", f"Unexpected response message - {err} | {res}")
-                elif ty == _MsgType.req.value:
+                elif ty == MsgType.req.value:
                     method, argv = op1, op2
                     if cb := methods.get(method):
                         create_task(cb(msg_id, argv))
                     else:
-                        log.warn("%s", f"No RPC listener for {method}")
+                        create_task(default(MsgType.req, method, argv))
                 else:
                     assert False
 
