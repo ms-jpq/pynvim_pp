@@ -18,6 +18,8 @@ from typing import (
     cast,
 )
 
+from msgpack import Packer
+
 from .atomic import Atomic
 from .lib import decode, encode
 from .types import BufNamespace, Ext, ExtData, HasLocalCall, NoneType, NvimPos
@@ -44,36 +46,27 @@ class ExtMark:
 
 class Buffer(Ext, HasLocalCall):
     prefix = "nvim_buf"
+    _packer = Packer()
 
     @classmethod
     def from_int(cls, num: int) -> Buffer:
-        length = max(1, ceil(log(num) / log(255)))
-        return Buffer(data=ExtData(num.to_bytes(length, byteorder="big")))
+        return Buffer(data=ExtData(cls._packer.pack(num)))
 
     @classmethod
     async def list(cls, listed: bool) -> Sequence[Buffer]:
+        bufs = cast(
+            Sequence[Buffer],
+            await cls.api.list_bufs(NoneType, prefix=cls.base_prefix),
+        )
 
         if listed:
-            raw = await cls.api.command_output(str, ":buffers", prefix=cls.base_prefix)
-
-            def parse(line: str) -> Iterator[str]:
-                for char in line.lstrip():
-                    if char.isdigit():
-                        yield char
-                    else:
-                        break
-
-            def cont() -> Iterator[Buffer]:
-                for line in raw.strip().splitlines():
-                    num = int("".join(parse(line)))
-                    yield cls.from_int(num)
-
-            return tuple(cont())
+            atomic = Atomic()
+            for buf in bufs:
+                atomic.buf_is_loaded(buf)
+            loaded = await atomic.commit(bool)
+            return tuple(buf for buf, listed in zip(bufs, loaded) if listed)
         else:
-            return cast(
-                Sequence[Buffer],
-                await cls.api.list_bufs(NoneType, prefix=cls.base_prefix),
-            )
+            return bufs
 
     @classmethod
     async def get_current(cls) -> Buffer:
