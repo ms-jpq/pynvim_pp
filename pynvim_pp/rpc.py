@@ -22,6 +22,7 @@ from typing import (
     Coroutine,
     Mapping,
     MutableMapping,
+    NewType,
     Optional,
     Sequence,
     Type,
@@ -43,11 +44,12 @@ class MsgType(Enum):
     notif = 2
 
 
-_RX_Q = MutableMapping[int, Future]
-_METHODS = MutableMapping[
-    str, Callable[[Optional[int], Sequence[Any]], Coroutine[Any, Any, Any]]
-]
 RPCdefault = Callable[[MsgType, Method, Sequence[Any]], Coroutine[Any, Any, Any]]
+_MSG_ID = NewType("_MSG_ID", int)
+_RX_Q = MutableMapping[_MSG_ID, Future]
+_METHODS = MutableMapping[
+    str, Callable[[Optional[_MSG_ID], Sequence[Any]], Coroutine[Any, Any, None]]
+]
 
 _LIMIT = 10**6
 
@@ -71,6 +73,25 @@ class _Hooker:
             return cls(data=ExtData(data))
         else:
             raise RuntimeError((code, data))
+
+
+def _wrap(
+    tx: Queue, f: Callable[..., Awaitable[Any]]
+) -> Callable[[Optional[_MSG_ID], Sequence[Any]], Coroutine[Any, Any, None]]:
+    @wraps(f)
+    async def wrapped(msg_id: Optional[int], params: Sequence[Any]) -> None:
+        if msg_id is None:
+            await f(*params)
+        else:
+            try:
+                resp = await f(*params)
+            except Exception as e:
+                error = str((e, format_exc()))
+                await tx.put((MsgType.resp.value, msg_id, error, None))
+            else:
+                await tx.put((MsgType.resp.value, msg_id, None, resp))
+
+    return wrapped
 
 
 async def _connect(
@@ -100,7 +121,7 @@ async def _connect(
 
 class _RPClient(RPClient):
     def __init__(self, tx: Queue, rx: _RX_Q, notifs: _METHODS) -> None:
-        self._loop, self._uids = get_event_loop(), count()
+        self._loop, self._uids = get_event_loop(), map(_MSG_ID, count())
         self._tx, self._rx = tx, rx
         self._methods = notifs
         self._chan: Optional[Chan] = None
@@ -122,20 +143,7 @@ class _RPClient(RPClient):
 
     def register(self, f: RPCallable) -> None:
         assert f.method not in self._methods
-
-        @wraps(f)
-        async def wrapped(msg_id: Optional[int], params: Sequence[Any]) -> None:
-            if msg_id is None:
-                await f(*params)
-            else:
-                try:
-                    resp = await f(*params)
-                except Exception as e:
-                    error = str((e, format_exc()))
-                    await self._tx.put((MsgType.resp.value, msg_id, error, None))
-                else:
-                    await self._tx.put((MsgType.resp.value, msg_id, None, resp))
-
+        wrapped = _wrap(self._tx, f=f)
         self._methods[f.method] = wrapped
 
 
@@ -144,6 +152,7 @@ async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClie
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
     methods: _METHODS = {}
+    nil_handler = _wrap(tx_q, f=default)
 
     async def tx() -> AsyncIterator[Any]:
         while True:
@@ -161,7 +170,7 @@ async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClie
                 if cb := methods.get(method):
                     create_task(cb(None, params))
                 else:
-                    create_task(default(MsgType.notif, method, params))
+                    create_task(nil_handler(None, (MsgType.notif, method, params)))
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
@@ -179,7 +188,7 @@ async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClie
                     if cb := methods.get(method):
                         create_task(cb(msg_id, argv))
                     else:
-                        create_task(default(MsgType.req, method, argv))
+                        create_task(nil_handler(msg_id, (MsgType.req, method, argv)))
                 else:
                     assert False
 
