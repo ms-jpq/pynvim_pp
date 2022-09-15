@@ -7,6 +7,7 @@ from typing import (
     Any,
     Iterable,
     Iterator,
+    Literal,
     Mapping,
     MutableMapping,
     MutableSequence,
@@ -43,7 +44,7 @@ class ExtMark:
             return ()
 
 
-def linefeed(lf: str) -> str:
+def linefeed(lf: str) -> Literal["\r\n", "\n", "\r"]:
     if lf == "dos":
         return "\r\n"
     elif lf == "unix":
