@@ -33,3 +33,5 @@ jobs:
       - name: Lint
         run: mypy -- .
 
+      - name: Install
+        run: pip3 install -- .
