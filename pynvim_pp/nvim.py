@@ -171,8 +171,8 @@ class _Nvim(HasApi, HasChan):
         return tuple(path for path in resolved if path)
 
     async def create_namespace(self, seed: UUID) -> BufNamespace:
-        ns = await self.api.create_namespace(int, seed.hex)
-        return BufNamespace(ns)
+        ns = await self.api.create_namespace(BufNamespace, seed.hex)
+        return ns
 
     async def list_bookmarks(
         self,

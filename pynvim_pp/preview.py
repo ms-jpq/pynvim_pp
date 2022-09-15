@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Tuple, cast
+from typing import Optional, Sequence, Tuple
 
 from .atomic import Atomic
 from .buffer import Buffer
@@ -14,8 +14,7 @@ async def preview_windows(tab: Optional[Tabpage] = None) -> Sequence[Window]:
     for win in wins:
         atomic.win_get_option(win, "previewwindow")
 
-    prv = cast(Sequence[bool], await atomic.commit(NoneType))
-
+    prv = await atomic.commit(bool)
     previews = tuple(win for win, preview in zip(wins, prv) if preview)
     return previews
 

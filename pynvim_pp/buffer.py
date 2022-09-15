@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from math import ceil, log
 from string import ascii_lowercase
 from typing import (
     Any,
@@ -42,6 +41,17 @@ class ExtMark:
             return await self.buf.get_text(self.begin, end=end)
         else:
             return ()
+
+
+def linefeed(lf: str) -> str:
+    if lf == "dos":
+        return "\r\n"
+    elif lf == "unix":
+        return "\n"
+    elif lf == "mac":
+        return "\r"
+    else:
+        raise ValueError(lf)
 
 
 class Buffer(Ext, HasLocalCall):
@@ -108,14 +118,7 @@ class Buffer(Ext, HasLocalCall):
 
     async def linefeed(self) -> str:
         lf = await self.opts.get(str, "fileformat")
-        if lf == "dos":
-            return "\r\n"
-        elif lf == "unix":
-            return "\n"
-        elif lf == "mac":
-            return "\r"
-        else:
-            assert False
+        return linefeed(lf)
 
     async def modifiable(self) -> bool:
         return await self.opts.get(bool, "modifiable")
