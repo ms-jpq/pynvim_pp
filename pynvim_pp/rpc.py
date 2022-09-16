@@ -6,7 +6,8 @@ from asyncio import (
     get_event_loop,
     open_unix_connection,
 )
-from contextlib import asynccontextmanager
+from asyncio.exceptions import InvalidStateError
+from contextlib import asynccontextmanager, suppress
 from enum import Enum, unique
 from functools import cached_property, wraps
 from itertools import count
@@ -177,10 +178,11 @@ async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClie
                 if ty == MsgType.resp.value:
                     err, res = op1, op2
                     if fut := rx_q.get(msg_id):
-                        if err:
-                            fut.set_exception(NvimError(err))
-                        else:
-                            fut.set_result(res)
+                        with suppress(InvalidStateError):
+                            if err:
+                                fut.set_exception(NvimError(err))
+                            else:
+                                fut.set_result(res)
                     else:
                         log.warn("%s", f"Unexpected response message - {err} | {res}")
                 elif ty == MsgType.req.value:
