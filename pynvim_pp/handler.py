@@ -44,9 +44,10 @@ def _new_lua_func(atomic: Atomic, chan: Chan, handler: RPCallable[Any]) -> None:
 
 
 def _new_viml_func(atomic: Atomic, handler: RPCallable[Any]) -> None:
+    method = handler.method.title()
     viml = f"""
-    function! {handler.method}(...)
-      return luaeval('_G["{handler.namespace}"]["{handler.method}"](unpack(_A))', a:000)
+    function! {method}(...)
+      return luaeval('_G["{handler.namespace}"]["{method}"](unpack(_A))', a:000)
     endfunction
     """
     atomic.command(viml)
