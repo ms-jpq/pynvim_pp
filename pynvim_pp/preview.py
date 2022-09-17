@@ -39,7 +39,7 @@ async def _open_preview() -> Tuple[Window, Buffer]:
 
         with Atomic() as (atomic, ns):
             ns.buf = atomic.win_get_buf(win)
-            atomic.win_get_option(win, "previewwindow")
+            atomic.win_set_option(win, "previewwindow", True)
             atomic.win_set_height(win, height)
             await atomic.commit(NoneType)
 
