@@ -1,15 +1,17 @@
 from asyncio import (
     Future,
     Queue,
+    StreamReader,
+    StreamWriter,
     create_task,
     gather,
     get_event_loop,
-    open_unix_connection,
 )
 from asyncio.exceptions import InvalidStateError
 from contextlib import asynccontextmanager, suppress
 from enum import Enum, unique
 from functools import cached_property, wraps
+from ipaddress import IPv4Address, IPv6Address
 from itertools import count
 from pathlib import PurePath
 from sys import version_info
@@ -21,12 +23,15 @@ from typing import (
     Awaitable,
     Callable,
     Coroutine,
+    Literal,
     Mapping,
     MutableMapping,
     NewType,
     Optional,
     Sequence,
+    Tuple,
     Type,
+    Union,
 )
 
 from msgpack import ExtType, Packer, Unpacker
@@ -45,6 +50,10 @@ class MsgType(Enum):
     notif = 2
 
 
+ServerAddr = Union[
+    PurePath, Tuple[Union[Literal["localhost"], IPv4Address, IPv6Address], int]
+]
+
 RPCdefault = Callable[[MsgType, Method, Sequence[Any]], Coroutine[Any, Any, Any]]
 _MSG_ID = NewType("_MSG_ID", int)
 _RX_Q = MutableMapping[_MSG_ID, Future]
@@ -53,6 +62,20 @@ _METHODS = MutableMapping[
 ]
 
 _LIMIT = 10**6
+
+
+async def _conn(socket: ServerAddr) -> Tuple[StreamReader, StreamWriter]:
+    if isinstance(socket, PurePath):
+        from asyncio import open_unix_connection
+
+        return await open_unix_connection(socket)
+    elif isinstance(socket, tuple) and len(socket) == 2:
+        addr, port = socket
+        from asyncio import open_connection
+
+        return await open_connection(str(addr), port=port)
+    else:
+        assert False, socket
 
 
 def _pack(val: Any) -> ExtType:
@@ -96,13 +119,13 @@ def _wrap(
 
 
 async def _connect(
-    socket: PurePath,
+    socket: ServerAddr,
     tx: AsyncIterable[Any],
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
     packer, unpacker = Packer(default=_pack), Unpacker(ext_hook=hooker.ext_hook)
-    reader, writer = await open_unix_connection(socket)
+    reader, writer = await _conn(socket)
 
     async def send() -> None:
         async for frame in tx:
@@ -149,7 +172,7 @@ class _RPClient(RPClient):
 
 
 @asynccontextmanager
-async def client(socket: PurePath, default: RPCdefault) -> AsyncIterator[_RPClient]:
+async def client(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[_RPClient]:
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
     methods: _METHODS = {}
