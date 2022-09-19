@@ -215,7 +215,9 @@ class _Nvim(HasApi, HasChan):
         else:
             return resp
 
-    async def input_list(self, choices: Mapping[str, _T]) -> Optional[_T]:
+    async def input_list(
+        self, choices: Mapping[str, _T], start: int = 1
+    ) -> Optional[_T]:
         try:
             idx = cast(
                 Optional[int], await self.fn.inputlist(NoneType, tuple(choices.keys()))
@@ -223,7 +225,7 @@ class _Nvim(HasApi, HasChan):
         except NvimError:
             return None
         else:
-            for i, val in enumerate(choices.values()):
+            for i, val in enumerate(choices.values(), start=start):
                 if i == idx:
                     return val
             else:
