@@ -32,7 +32,9 @@ jobs:
         run: pip install -U mypy
 
       - name: Lint
-        run: mypy -- .
+        run: |-
+          mypy -- .
 
       - name: Install
-        run: pip3 install -- .
+        run: |-
+          pip install -- .
