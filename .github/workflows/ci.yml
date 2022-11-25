@@ -29,7 +29,8 @@ jobs:
           python-version: ${{ matrix.python_ver }}
 
       - name: Pip Packages
-        run: pip install -U mypy
+        run: |-
+          pip install -- mypy
 
       - name: Lint
         run: |-
