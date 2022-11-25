@@ -2,3 +2,8 @@
 name            = "pynvim_pp"
 requires-python = ">=3.8.0"
 version         = "0.1.10"
+
+dependencies = ["msgpack"]
+
+[project.optional-dependencies]
+dev = ["mypy"]
