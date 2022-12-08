@@ -249,5 +249,7 @@ async def client(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[_RPCl
     rpc._chan = chan
     hooker.init(Buffer, Window, Tabpage)
 
-    yield rpc
-    await conn
+    try:
+        yield rpc
+    finally:
+        await conn
