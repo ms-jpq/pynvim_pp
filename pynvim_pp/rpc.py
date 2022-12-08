@@ -119,13 +119,13 @@ def _wrap(
 
 
 async def _connect(
-    socket: ServerAddr,
+    reader: StreamReader,
+    writer: StreamWriter,
     tx: AsyncIterable[Any],
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
     packer, unpacker = Packer(default=_pack), Unpacker(ext_hook=hooker.ext_hook)
-    reader, writer = await _conn(socket)
 
     async def send() -> None:
         async for frame in tx:
@@ -218,7 +218,8 @@ async def client(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[_RPCl
                     assert False
 
     hooker = _Hooker()
-    conn = create_task(_connect(socket, tx=tx(), rx=rx, hooker=hooker))
+    reader, writer = await _conn(socket)
+    conn = create_task(_connect(reader, writer=writer, tx=tx(), rx=rx, hooker=hooker))
     rpc = _RPClient(tx=tx_q, rx=rx_q, notifs=methods)
 
     await rpc.notify(
