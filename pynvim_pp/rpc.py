@@ -5,7 +5,7 @@ from asyncio import (
     StreamWriter,
     create_task,
     gather,
-    get_event_loop,
+    get_running_loop,
 )
 from asyncio.exceptions import InvalidStateError
 from contextlib import asynccontextmanager, suppress
@@ -145,7 +145,7 @@ async def _connect(
 
 class _RPClient(RPClient):
     def __init__(self, tx: Queue, rx: _RX_Q, notifs: _METHODS) -> None:
-        self._loop, self._uids = get_event_loop(), map(_MSG_ID, count())
+        self._loop, self._uids = get_running_loop(), map(_MSG_ID, count())
         self._tx, self._rx = tx, rx
         self._methods = notifs
         self._chan: Optional[Chan] = None
