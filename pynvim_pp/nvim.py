@@ -176,7 +176,7 @@ class _Nvim(HasApi, HasChan):
 
     async def list_bookmarks(
         self,
-    ) -> Mapping[Marker, Tuple[Path, Optional[Buffer], NvimPos]]:
+    ) -> Mapping[Marker, Tuple[Optional[Path], Optional[Buffer], NvimPos]]:
         if await self.api.has("nvim-0.6"):
             with Atomic() as (atomic, ns):
                 ns.cwd = atomic.call_function("getcwd", ())
