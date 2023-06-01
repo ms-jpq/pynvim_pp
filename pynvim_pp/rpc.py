@@ -43,6 +43,12 @@ from .types import PARENT, Chan, Ext, ExtData, Method, NvimError, RPCallable, RP
 from .window import Window
 
 
+_IS_PYTHON3 = version_info >= (3, 0)
+if _IS_PYTHON3:
+    _UNICODE_ERRORS_DEFAULT = 'surrogateescape'
+else:
+    _UNICODE_ERRORS_DEFAULT = 'ignore'
+
 @unique
 class MsgType(Enum):
     req = 0
@@ -125,7 +131,7 @@ async def _connect(
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
-    packer, unpacker = Packer(default=_pack), Unpacker(ext_hook=hooker.ext_hook)
+    packer, unpacker = Packer(default=_pack, unicode_errors=_UNICODE_ERRORS_DEFAULT), Unpacker(ext_hook=hooker.ext_hook, unicode_errors=_UNICODE_ERRORS_DEFAULT)
 
     async def send() -> None:
         async for frame in tx:
