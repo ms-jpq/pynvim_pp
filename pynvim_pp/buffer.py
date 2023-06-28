@@ -10,7 +10,6 @@ from typing import (
     Literal,
     Mapping,
     MutableMapping,
-    MutableSequence,
     NewType,
     Optional,
     Sequence,
@@ -142,9 +141,9 @@ class Buffer(Ext, HasLocalCall):
     async def line_count(self) -> int:
         return await self.api.line_count(int, self)
 
-    async def get_lines(self, lo: int = 0, hi: int = -1) -> MutableSequence[str]:
+    async def get_lines(self, lo: int = 0, hi: int = -1) -> Sequence[str]:
         return cast(
-            MutableSequence[str],
+            Sequence[str],
             await self.api.get_lines(NoneType, self, lo, hi, True),
         )
 
