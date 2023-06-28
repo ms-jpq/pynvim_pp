@@ -126,8 +126,13 @@ async def _connect(
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
-    packer = Packer(default=_pack)
-    unpacker = Unpacker(ext_hook=hooker.ext_hook, use_list=False)
+    unicode_errors = "surrogateescape"
+    packer = Packer(default=_pack, unicode_errors=unicode_errors)
+    unpacker = Unpacker(
+        ext_hook=hooker.ext_hook,
+        unicode_errors=unicode_errors,
+        use_list=False,
+    )
 
     async def send() -> None:
         async for frame in tx:
@@ -139,12 +144,8 @@ async def _connect(
     async def recv() -> AsyncIterator[Any]:
         while data := await reader.read(_LIMIT):
             unpacker.feed(data)
-            try:
-                for frame in unpacker:
-                    yield frame
-            except UnicodeDecodeError as e:
-                log.error("%s", e)
-                unpacker.skip()
+            for frame in unpacker:
+                yield frame
 
     await gather(rx(recv()), send())
 
