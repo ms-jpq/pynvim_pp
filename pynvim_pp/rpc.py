@@ -11,6 +11,7 @@ from asyncio.exceptions import InvalidStateError
 from contextlib import asynccontextmanager, suppress
 from enum import Enum, unique
 from functools import cached_property, wraps
+from io import DEFAULT_BUFFER_SIZE
 from ipaddress import IPv4Address, IPv6Address
 from itertools import count
 from pathlib import PurePath
@@ -61,7 +62,7 @@ _METHODS = MutableMapping[
     str, Callable[[Optional[_MSG_ID], Sequence[Any]], Coroutine[Any, Any, None]]
 ]
 
-_LIMIT = 10**6
+_LIMIT = DEFAULT_BUFFER_SIZE
 
 
 async def _conn(socket: ServerAddr) -> Tuple[StreamReader, StreamWriter]:
@@ -125,7 +126,8 @@ async def _connect(
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
-    packer, unpacker = Packer(default=_pack), Unpacker(ext_hook=hooker.ext_hook)
+    packer = Packer(default=_pack)
+    unpacker = Unpacker(ext_hook=hooker.ext_hook, use_list=False)
 
     async def send() -> None:
         async for frame in tx:
@@ -137,8 +139,12 @@ async def _connect(
     async def recv() -> AsyncIterator[Any]:
         while data := await reader.read(_LIMIT):
             unpacker.feed(data)
-            for frame in unpacker:
-                yield frame
+            try:
+                for frame in unpacker:
+                    yield frame
+            except UnicodeDecodeError as e:
+                log.error("%s", e)
+                unpacker.skip()
 
     await gather(rx(recv()), send())
 

@@ -4,8 +4,6 @@ from pathlib import Path
 from string import Template
 from typing import (
     Any,
-    Awaitable,
-    Callable,
     Iterator,
     MutableMapping,
     NewType,
