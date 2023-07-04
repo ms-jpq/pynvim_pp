@@ -14,12 +14,14 @@ _UNICODE_WIDTH_LOOKUP = {
 
 _SPECIAL = {"\n", "\r"}
 
+_Encoding = Literal["UTF-8", "UTF-16-LE", "UTF-32-LE"]
 
-def encode(text: str, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> bytes:
+
+def encode(text: str, encoding: _Encoding = "UTF-8") -> bytes:
     return text.encode(encoding, errors="surrogateescape")
 
 
-def decode(btext: bytes, encoding: Literal["UTF-8", "UTF-16-LE"] = "UTF-8") -> str:
+def decode(btext: bytes, encoding: _Encoding = "UTF-8") -> str:
     return btext.decode(encoding, errors="surrogateescape")
 
 
