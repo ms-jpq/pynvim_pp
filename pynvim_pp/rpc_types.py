@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, NewType, Protocol, TypeVar, cast
+from enum import Enum, unique
+from ipaddress import IPv4Address, IPv6Address
+from pathlib import PurePath
+from typing import Any, Literal, NewType, Protocol, Tuple, TypeVar, Union, cast
 from uuid import UUID
 
 _T_co = TypeVar("_T_co", covariant=True)
@@ -10,9 +13,20 @@ ExtData = NewType("ExtData", bytes)
 Chan = NewType("Chan", int)
 Method = NewType("Method", str)
 
+ServerAddr = Union[
+    PurePath, Tuple[Union[Literal["localhost"], IPv4Address, IPv6Address], int]
+]
+
 
 class NvimError(Exception):
     ...
+
+
+@unique
+class MsgType(Enum):
+    req = 0
+    resp = 1
+    notif = 2
 
 
 class MsgPackExt:

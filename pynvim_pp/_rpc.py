@@ -10,10 +10,8 @@ from asyncio import (
 )
 from concurrent.futures import Future, InvalidStateError
 from contextlib import asynccontextmanager, suppress
-from enum import Enum, unique
 from functools import cached_property, wraps
 from io import DEFAULT_BUFFER_SIZE
-from ipaddress import IPv4Address, IPv6Address
 from itertools import count
 from pathlib import PurePath
 from sys import version_info
@@ -27,7 +25,6 @@ from typing import (
     Callable,
     Coroutine,
     Iterable,
-    Literal,
     Mapping,
     MutableMapping,
     NewType,
@@ -35,7 +32,6 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    Union,
 )
 
 from msgpack import ExtType, Packer, Unpacker
@@ -49,23 +45,13 @@ from .rpc_types import (
     MsgPackExt,
     MsgPackTabpage,
     MsgPackWindow,
+    MsgType,
     NvimError,
     RPCallable,
     RPClient,
+    ServerAddr,
 )
 from .types import PARENT
-
-
-@unique
-class MsgType(Enum):
-    req = 0
-    resp = 1
-    notif = 2
-
-
-ServerAddr = Union[
-    PurePath, Tuple[Union[Literal["localhost"], IPv4Address, IPv6Address], int]
-]
 
 RPCdefault = Callable[[MsgType, Method, Sequence[Any]], Coroutine[Any, Any, Any]]
 _MSG_ID = NewType("_MSG_ID", int)

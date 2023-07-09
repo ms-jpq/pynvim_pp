@@ -25,12 +25,12 @@ from typing import (
 )
 from uuid import UUID
 
-from ._rpc import RPCdefault, ServerAddr, client
+from ._rpc import RPCdefault, client
 from .atomic import Atomic
 from .buffer import Buffer
 from .handler import GLOBAL_NS, RPC
 from .lib import decode, resolve_path
-from .rpc_types import Chan, NvimError, RPCallable, RPClient
+from .rpc_types import Chan, NvimError, RPCallable, RPClient, ServerAddr
 from .tabpage import Tabpage
 from .types import (
     PARENT,
