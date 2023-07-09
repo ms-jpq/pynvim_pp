@@ -79,7 +79,7 @@ async def _conn(socket: ServerAddr) -> Tuple[StreamReader, StreamWriter]:
         assert False, socket
 
 
-def _pack(val: Any) -> ExtType:
+def _pack(val: Any) -> ExtType:  # type: ignore
     if isinstance(val, Ext):
         return ExtType(val.code, val.data)
     else:

@@ -25,7 +25,7 @@ from uuid import UUID
 
 from .atomic import Atomic
 from .buffer import Buffer
-from .handler import GLOBAL_NS, RPC, RPCallable
+from .handler import GLOBAL_NS, RPC
 from .lib import decode, resolve_path
 from .rpc import RPCdefault, ServerAddr, client
 from .tabpage import Tabpage

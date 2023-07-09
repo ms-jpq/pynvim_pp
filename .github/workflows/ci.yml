@@ -28,10 +28,11 @@ jobs:
         with:
           python-version: ${{ matrix.python_ver }}
 
-      - name: Lint
-        run: |-
+      - run: |-
+          pip install -- tomli
+
+      - run: |-
           make lint
 
-      - name: Install
-        run: |-
+      - run: |-
           pip install -- .
