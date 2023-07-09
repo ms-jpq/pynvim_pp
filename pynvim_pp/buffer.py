@@ -21,7 +21,8 @@ from msgpack import Packer
 
 from .atomic import Atomic
 from .lib import decode, encode
-from .types import BufNamespace, Ext, ExtData, HasLocalCall, NoneType, NvimPos
+from .rpc_types import ExtData, MsgPackBuffer
+from .types import BufNamespace, HasVOL, NoneType, NvimPos
 
 ExtMarker = NewType("ExtMarker", int)
 BufMarker = NewType("BufMarker", str)
@@ -54,7 +55,7 @@ def linefeed(lf: str) -> Literal["\r\n", "\n", "\r"]:
         raise ValueError(lf)
 
 
-class Buffer(Ext, HasLocalCall):
+class Buffer(MsgPackBuffer, HasVOL):
     prefix = "nvim_buf"
     _packer = Packer()
 

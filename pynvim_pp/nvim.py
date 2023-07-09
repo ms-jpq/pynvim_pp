@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from asyncio import gather
-from contextlib import asynccontextmanager
+from asyncio import gather, run, wrap_future
+from concurrent.futures import Future, InvalidStateError
+from contextlib import asynccontextmanager, suppress
 from functools import cached_property
 from inspect import iscoroutinefunction
 from itertools import chain
 from os.path import normpath
 from pathlib import Path, PurePath
 from string import ascii_uppercase
+from threading import Thread
 from typing import (
     Any,
     AsyncIterator,
@@ -23,26 +25,23 @@ from typing import (
 )
 from uuid import UUID
 
+from ._rpc import RPCdefault, ServerAddr, client
 from .atomic import Atomic
 from .buffer import Buffer
 from .handler import GLOBAL_NS, RPC
 from .lib import decode, resolve_path
-from .rpc import RPCdefault, ServerAddr, client
+from .rpc_types import Chan, NvimError, RPCallable, RPClient
 from .tabpage import Tabpage
 from .types import (
     PARENT,
     Api,
     BufNamespace,
     CastReturnAF,
-    Chan,
     HasApi,
     HasChan,
     NoneType,
-    NvimError,
     NvimPos,
     Opts,
-    RPCallable,
-    RPClient,
     Vars,
 )
 from .window import Window
@@ -246,17 +245,41 @@ class _Nvim(HasApi, HasChan):
 
 @asynccontextmanager
 async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClient]:
-    async with client(socket, default=default) as rpc:
-        for cls in (_Nvim, Atomic, Buffer, Window, Tabpage, _Lua, _Fn, _Vvars, _Cur):
-            c = cast(HasApi, cls)
-            api = Api(rpc=rpc, prefix=c.prefix)
-            c.init_api(api=api)
+    ext_types = (Tabpage, Window, Buffer)
 
-        for cls in (_Nvim, _Lua, RPC):
-            cl = cast(HasChan, cls)
-            cl.init_chan(chan=rpc.chan)
+    @asynccontextmanager
+    async def _conn() -> AsyncIterator[RPClient]:
+        async with client(socket=socket, default=default, ext_types=ext_types) as rpc:
+            for cls in (_Nvim, Atomic, *ext_types, _Lua, _Fn, _Vvars, _Cur):
+                c = cast(HasApi, cls)
+                api = Api(rpc=rpc, prefix=c.prefix)
+                c.init_api(api=api)
 
-        yield rpc
+            for cls in (_Nvim, _Lua, RPC):
+                cl = cast(HasChan, cls)
+                cl.init_chan(chan=rpc.chan)
+
+            yield rpc
+
+    f1: Future = Future()
+    f2: Future = Future()
+
+    async def cont() -> None:
+        try:
+            async with _conn() as rpc:
+                with suppress(InvalidStateError):
+                    f1.set_result(rpc)
+        except Exception as e:
+            with suppress(InvalidStateError):
+                f1.set_exception(e)
+
+        await wrap_future(f2)
+
+    th = Thread(daemon=True, target=lambda: run(cont()))
+    th.start()
+    yield await wrap_future(f1)
+    with suppress(InvalidStateError):
+        f2.set_result(None)
 
 
 Nvim = _Nvim()

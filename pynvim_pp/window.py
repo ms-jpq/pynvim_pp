@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import NewType, Sequence, Tuple, cast
 
 from .buffer import Buffer
-from .types import Ext, HasLocalCall, NoneType, NvimPos
+from .rpc_types import MsgPackWindow
+from .types import HasVOL, NoneType, NvimPos
 
 WinNum = NewType("WinNum", int)
 
 
-class Window(Ext, HasLocalCall):
+class Window(MsgPackWindow, HasVOL):
     prefix = "nvim_win"
 
     @classmethod

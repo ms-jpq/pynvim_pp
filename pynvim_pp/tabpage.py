@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Sequence, cast
 
-from .types import Ext, NoneType
+from .rpc_types import MsgPackTabpage
+from .types import HasVOL, NoneType
 from .window import Window
 
 
-class Tabpage(Ext):
+class Tabpage(MsgPackTabpage, HasVOL):
     prefix = "nvim_tabpage"
 
     @classmethod

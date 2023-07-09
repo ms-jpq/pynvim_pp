@@ -17,7 +17,8 @@ from uuid import uuid4
 
 from .atomic import Atomic
 from .lib import decode
-from .types import PARENT, Chan, HasChan, Method, RPCallable
+from .rpc_types import Chan, Method, RPCallable
+from .types import PARENT, HasChan
 
 _T = TypeVar("_T")
 

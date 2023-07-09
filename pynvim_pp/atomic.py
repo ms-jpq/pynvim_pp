@@ -14,7 +14,8 @@ from typing import (
     cast,
 )
 
-from .types import HasApi, NoneType, NvimError
+from .rpc_types import NvimError
+from .types import HasApi, NoneType
 
 _T = TypeVar("_T")
 

@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from functools import cached_property
 from os import linesep
 from pathlib import Path
 from string import Template
@@ -14,26 +14,18 @@ from typing import (
     TypeVar,
     cast,
 )
-from uuid import UUID
 
 from .lib import decode
+from .rpc_types import Chan, Method, RPClient
 
 NoneType = bool
 _T = TypeVar("_T")
-_T_co = TypeVar("_T_co", covariant=True)
 
 PARENT = Path(__file__).resolve(strict=True).parent
 
 _LUA_CALL = Template(decode((PARENT / "call.lua").read_bytes().strip()))
 
 
-class NvimError(Exception):
-    ...
-
-
-Chan = NewType("Chan", int)
-ExtData = NewType("ExtData", bytes)
-Method = NewType("Method", str)
 BufNamespace = NewType("BufNamespace", int)
 NvimPos = Tuple[int, int]
 
@@ -47,50 +39,6 @@ class ApiReturnAF(Protocol):
     async def __call__(
         self, ty: Type[_T], *args: Any, prefix: Optional[str] = None
     ) -> _T:
-        ...
-
-
-class RPCallable(Protocol[_T_co]):
-    @property
-    def uuid(self) -> UUID:
-        ...
-
-    @property
-    def blocking(self) -> bool:
-        ...
-
-    @property
-    def schedule(self) -> bool:
-        ...
-
-    @property
-    def namespace(self) -> str:
-        ...
-
-    @property
-    def method(self) -> Method:
-        ...
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> _T_co:
-        ...
-
-
-class RPClient(Protocol):
-    @property
-    @abstractmethod
-    def chan(self) -> Chan:
-        ...
-
-    @abstractmethod
-    async def notify(self, method: Method, *params: Any) -> None:
-        ...
-
-    @abstractmethod
-    async def request(self, method: Method, *params: Any) -> Any:
-        ...
-
-    @abstractmethod
-    def register(self, f: RPCallable) -> None:
         ...
 
 
@@ -169,12 +117,6 @@ class HasApi:
         cls.api = api
 
 
-class HasLocalCall(HasApi):
-    async def local_lua(self, ty: Type[_T], lua: str, *argv: Any) -> _T:
-        fn = _LUA_CALL.substitute(BODY=linesep + lua)
-        return await self.api.execute_lua(ty, fn, (self.prefix, self, *argv))
-
-
 class HasChan:
     chan = cast(Chan, None)
 
@@ -183,24 +125,15 @@ class HasChan:
         cls.chan = chan
 
 
-class Ext(HasApi):
-    code = cast(int, None)
+class HasVOL(HasApi):
+    @cached_property
+    def vars(self) -> Vars:
+        return Vars(self.api, this=self)
 
-    @classmethod
-    def init_code(cls, code: int) -> None:
-        assert isinstance(code, int)
-        cls.code = code
+    @cached_property
+    def opts(self) -> Opts:
+        return Opts(self.api, this=self)
 
-    def __init__(self, data: ExtData) -> None:
-        self.data = ExtData(data)
-        self.vars = Vars(self.api, this=self)
-        self.opts = Opts(self.api, this=self)
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Ext):
-            return self.code == other.code and self.data == other.data
-        else:
-            return False
-
-    def __hash__(self) -> int:
-        return hash((self.code, self.data))
+    async def local_lua(self, ty: Type[_T], lua: str, *argv: Any) -> _T:
+        fn = _LUA_CALL.substitute(BODY=linesep + lua)
+        return await self.api.execute_lua(ty, fn, (self.prefix, self, *argv))
