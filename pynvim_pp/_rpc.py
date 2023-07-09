@@ -1,4 +1,5 @@
 from asyncio import (
+    AbstractEventLoop,
     Queue,
     StreamReader,
     StreamWriter,
@@ -189,7 +190,10 @@ class _RPClient(RPClient):
 
 @asynccontextmanager
 async def client(
-    socket: ServerAddr, default: RPCdefault, ext_types: Iterable[Type[MsgPackExt]]
+    loop: AbstractEventLoop,
+    socket: ServerAddr,
+    default: RPCdefault,
+    ext_types: Iterable[Type[MsgPackExt]],
 ) -> AsyncIterator[_RPClient]:
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
@@ -210,9 +214,11 @@ async def client(
                 ty, method, params = frame
                 assert ty == MsgType.notif.value
                 if cb := methods.get(method):
-                    create_task(cb(None, params))
+                    co = cb(None, params)
                 else:
-                    create_task(nil_handler(None, (MsgType.notif, method, params)))
+                    co = nil_handler(None, (MsgType.notif, method, params))
+
+                run_coroutine_threadsafe(co, loop=loop)
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
@@ -229,9 +235,11 @@ async def client(
                 elif ty == MsgType.req.value:
                     method, argv = op1, op2
                     if cb := methods.get(method):
-                        create_task(cb(msg_id, argv))
+                        co = cb(msg_id, argv)
                     else:
-                        create_task(nil_handler(msg_id, (MsgType.req, method, argv)))
+                        co = nil_handler(msg_id, (MsgType.req, method, argv))
+
+                    run_coroutine_threadsafe(co, loop=loop)
                 else:
                     assert False
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio import gather, run, wrap_future
+from asyncio import gather, get_running_loop, run, wrap_future
 from concurrent.futures import Future, InvalidStateError
 from contextlib import asynccontextmanager, suppress
 from functools import cached_property
@@ -246,10 +246,15 @@ class _Nvim(HasApi, HasChan):
 @asynccontextmanager
 async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClient]:
     ext_types = (Tabpage, Window, Buffer)
+    loop = get_running_loop()
+    f1: Future = Future()
+    f2: Future = Future()
 
     @asynccontextmanager
     async def _conn() -> AsyncIterator[RPClient]:
-        async with client(socket=socket, default=default, ext_types=ext_types) as rpc:
+        async with client(
+            loop, socket=socket, default=default, ext_types=ext_types
+        ) as rpc:
             for cls in (_Nvim, Atomic, *ext_types, _Lua, _Fn, _Vvars, _Cur):
                 c = cast(HasApi, cls)
                 api = Api(rpc=rpc, prefix=c.prefix)
@@ -260,9 +265,6 @@ async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClien
                 cl.init_chan(chan=rpc.chan)
 
             yield rpc
-
-    f1: Future = Future()
-    f2: Future = Future()
 
     async def cont() -> None:
         try:
@@ -277,9 +279,11 @@ async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClien
 
     th = Thread(daemon=True, target=lambda: run(cont()))
     th.start()
-    yield await wrap_future(f1)
-    with suppress(InvalidStateError):
-        f2.set_result(None)
+    try:
+        yield await wrap_future(f1)
+    finally:
+        with suppress(InvalidStateError):
+            f2.set_result(None)
 
 
 Nvim = _Nvim()
