@@ -29,9 +29,6 @@ jobs:
           python-version: ${{ matrix.python_ver }}
 
       - run: |-
-          pip install -- tomli
-
-      - run: |-
           make lint
 
       - run: |-
