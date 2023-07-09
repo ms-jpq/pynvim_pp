@@ -174,9 +174,8 @@ class _RPClient(RPClient):
         async def cont() -> Any:
             uid = next(self._uids)
             self._rx[uid] = fut
-            f = self._loop.create_future()
             await self._tx.put((MsgType.req.value, uid, method, params))
-            return await f
+            return await wrap_future(fut)
 
         f = run_coroutine_threadsafe(cont(), self._loop)
         return await wrap_future(f)
@@ -261,9 +260,9 @@ async def client(
     assert isinstance(types, Mapping)
     assert isinstance(error_info, Mapping)
 
-    MsgPackTabpage.init_code(types["Buffer"]["id"])
+    MsgPackTabpage.init_code(types["Tabpage"]["id"])
     MsgPackWindow.init_code(types["Window"]["id"])
-    MsgPackBuffer.init_code(types["Tabpage"]["id"])
+    MsgPackBuffer.init_code(types["Buffer"]["id"])
 
     rpc._chan = chan
     hooker.init(*ext_types)
