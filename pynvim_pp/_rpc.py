@@ -98,15 +98,18 @@ class _Hooker:
 
 
 def _wrap(
-    tx: Queue, f: Callable[..., Awaitable[Any]]
+    loop: AbstractEventLoop, tx: Queue, fn: Callable[..., Awaitable[Any]]
 ) -> Callable[[Optional[_MSG_ID], Sequence[Any]], Coroutine[Any, Any, None]]:
-    @wraps(f)
+    @wraps(fn)
     async def wrapped(msg_id: Optional[int], params: Sequence[Any]) -> None:
+        fut = run_coroutine_threadsafe(fn(*params), loop=loop)
+        f = wrap_future(fut)
+
         if msg_id is None:
-            await f(*params)
+            await f
         else:
             try:
-                resp = await f(*params)
+                resp = await f
             except Exception as e:
                 error = str((e, format_exc()))
                 await tx.put((MsgType.resp.value, msg_id, error, None))
@@ -148,8 +151,11 @@ async def _connect(
 
 
 class _RPClient(RPClient):
-    def __init__(self, tx: Queue, rx: _RX_Q, notifs: _METHODS) -> None:
+    def __init__(
+        self, foreign_loop: AbstractEventLoop, tx: Queue, rx: _RX_Q, notifs: _METHODS
+    ) -> None:
         self._lock = Lock()
+        self._foreign_loop = foreign_loop
         self._loop, self._uids = get_running_loop(), map(_MSG_ID, count())
         self._tx, self._rx = tx, rx
         self._methods = notifs
@@ -182,7 +188,7 @@ class _RPClient(RPClient):
     def register(self, f: RPCallable) -> None:
         with self._lock:
             assert f.method not in self._methods
-            wrapped = _wrap(self._tx, f=f)
+            wrapped = _wrap(self._foreign_loop, tx=self._tx, fn=f)
             self._methods[f.method] = wrapped
 
 
@@ -196,7 +202,7 @@ async def client(
     tx_q: Queue = Queue()
     rx_q: _RX_Q = {}
     methods: _METHODS = {}
-    nil_handler = _wrap(tx_q, f=default)
+    nil_handler = _wrap(loop, tx=tx_q, fn=default)
 
     async def tx() -> AsyncIterator[Any]:
         while True:
@@ -216,7 +222,7 @@ async def client(
                 else:
                     co = nil_handler(None, (MsgType.notif, method, params))
 
-                run_coroutine_threadsafe(co, loop=loop)
+                create_task(co)
 
             elif length == 4:
                 ty, msg_id, op1, op2 = frame
@@ -237,14 +243,14 @@ async def client(
                     else:
                         co = nil_handler(msg_id, (MsgType.req, method, argv))
 
-                    run_coroutine_threadsafe(co, loop=loop)
+                    create_task(co)
                 else:
                     assert False
 
     hooker = _Hooker()
     reader, writer = await _conn(socket)
     conn = create_task(_connect(reader, writer=writer, tx=tx(), rx=rx, hooker=hooker))
-    rpc = _RPClient(tx=tx_q, rx=rx_q, notifs=methods)
+    rpc = _RPClient(loop, tx=tx_q, rx=rx_q, notifs=methods)
 
     await rpc.notify(
         Method("nvim_set_client_info"),
