@@ -20,41 +20,32 @@ clobber: clean
 	python3 -m venv -- .venv
 
 define PYDEPS
-from contextlib import suppress
 from itertools import chain
 from os import execl
 from sys import executable
 
-toml = {}
+from tomli import load
 
-with suppress(ImportError):
-		from tomllib import load
+with open("pyproject.toml", "rb") as fd:
+    toml = load(fd)
 
-		toml = load(open("pyproject.toml", "rb"))
-
-with suppress(ImportError):
-		from tomli import load
-
-		with open("pyproject.toml", "rb") as fd:
-				toml = load(fd)
-
-assert toml
 project = toml["project"]
 execl(
-		executable,
-		executable,
-		"-m",
-		"pip",
-		"install",
-		"--upgrade",
-		"--",
-		*project.get("dependencies", ()),
-		*chain.from_iterable(project["optional-dependencies"].values()),
+    executable,
+    executable,
+    "-m",
+    "pip",
+    "install",
+    "--upgrade",
+    "--",
+    *project.get("dependencies", ()),
+    *chain.from_iterable(project["optional-dependencies"].values()),
 )
 endef
 export -- PYDEPS
 
 .venv/bin/mypy: .venv/bin/python3
+	'$<' -m pip install -- tomli
 	'$<' <<< "$$PYDEPS"
 
 lint: .venv/bin/mypy
