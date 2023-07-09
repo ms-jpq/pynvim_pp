@@ -61,8 +61,6 @@ _METHODS = MutableMapping[
     str, Callable[[Optional[_MSG_ID], Sequence[Any]], Coroutine[Any, Any, None]]
 ]
 
-_LIMIT = DEFAULT_BUFFER_SIZE
-
 
 async def _conn(socket: ServerAddr) -> Tuple[StreamReader, StreamWriter]:
     if isinstance(socket, PurePath):
@@ -141,7 +139,7 @@ async def _connect(
                 writer.write(packer.pack(frame))
 
     async def recv() -> AsyncIterator[Any]:
-        while data := await reader.read(_LIMIT):
+        while data := await reader.read(DEFAULT_BUFFER_SIZE):
             unpacker.feed(data)
             for frame in unpacker:
                 yield frame
