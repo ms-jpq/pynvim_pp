@@ -6,4 +6,4 @@ version         = "0.1.10"
 dependencies = ["msgpack"]
 
 [project.optional-dependencies]
-dev = ["mypy"]
+dev = ["mypy", "isort", "black"]
