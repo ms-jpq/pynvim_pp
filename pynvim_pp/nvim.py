@@ -275,14 +275,14 @@ async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClien
         except Exception as e:
             with suppress(InvalidStateError):
                 f1.set_exception(e)
+        finally:
+            with suppress(InvalidStateError):
+                f2.set_result(None)
 
     th = Thread(daemon=True, target=lambda: run(cont()))
     th.start()
-    try:
-        yield await wrap_future(f1)
-    finally:
-        with suppress(InvalidStateError):
-            f2.set_result(None)
+    yield await wrap_future(f1)
+    await wrap_future(f2)
 
 
 Nvim = _Nvim()
