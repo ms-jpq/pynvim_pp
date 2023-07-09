@@ -271,11 +271,10 @@ async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClien
             async with _conn() as rpc:
                 with suppress(InvalidStateError):
                     f1.set_result(rpc)
+                await wrap_future(f2)
         except Exception as e:
             with suppress(InvalidStateError):
                 f1.set_exception(e)
-
-        await wrap_future(f2)
 
     th = Thread(daemon=True, target=lambda: run(cont()))
     th.start()
