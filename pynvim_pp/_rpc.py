@@ -228,7 +228,7 @@ async def client(
                 ty, msg_id, op1, op2 = frame
                 if ty == MsgType.resp.value:
                     err, res = op1, op2
-                    if fut := rx_q.get(msg_id):
+                    if fut := rx_q.pop(msg_id, None):
                         with suppress(InvalidStateError):
                             if err:
                                 fut.set_exception(NvimError(err))
