@@ -1,10 +1,9 @@
 from contextlib import contextmanager
-from logging import ERROR, WARN, LogRecord, StreamHandler, getLogger, captureWarnings
-from pathlib import Path
+from logging import ERROR, WARN, LogRecord, StreamHandler, captureWarnings, getLogger
 from sys import stdout
 from typing import Iterator
 
-log = getLogger(Path(__file__).resolve(strict=True).parent.name)
+log = getLogger()
 
 
 class _Handler(StreamHandler):
