@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from logging import ERROR, WARN, LogRecord, StreamHandler, getLogger
+from logging import ERROR, WARN, LogRecord, StreamHandler, getLogger, captureWarnings
 from pathlib import Path
 from sys import stdout
 from typing import Iterator
@@ -23,6 +23,7 @@ _err.setLevel(ERROR)
 log.addHandler(_log)
 log.addHandler(_err)
 log.setLevel(WARN)
+captureWarnings(True)
 
 
 @contextmanager
