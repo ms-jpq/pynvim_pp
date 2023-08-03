@@ -126,7 +126,7 @@ async def _connect(
     rx: Callable[[AsyncIterator[Any]], Awaitable[None]],
     hooker: _Hooker,
 ) -> None:
-    unicode_errors = "ignore"
+    unicode_errors = "surrogateescape"
     packer = Packer(default=_pack, unicode_errors=unicode_errors)
     unpacker = Unpacker(
         ext_hook=hooker.ext_hook,
