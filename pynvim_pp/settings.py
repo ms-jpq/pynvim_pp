@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Iterable, MutableMapping, Sequence, Tuple, Union
+from typing import Iterable, MutableMapping, MutableSequence, Sequence, Tuple, Union
 
 from .atomic import Atomic
 
@@ -18,17 +18,17 @@ class _Setting:
         self.name, self._parent = name, parent
 
     def __iadd__(self, vals: Iterable[str]) -> _Setting:
-        self._parent._conf[self.name] = (_OP.plus, ",".join(vals))
+        self._parent._conf.setdefault(self.name, []).append((_OP.plus, ",".join(vals)))
         return self
 
     def __isub__(self, vals: Iterable[str]) -> _Setting:
-        self._parent._conf[self.name] = (_OP.minus, ",".join(vals))
+        self._parent._conf.setdefault(self.name, []).append((_OP.minus, ",".join(vals)))
         return self
 
 
 class Settings:
     def __init__(self) -> None:
-        self._conf: MutableMapping[str, Tuple[_OP, str]] = {}
+        self._conf: MutableMapping[str, MutableSequence[Tuple[_OP, str]]] = {}
 
     def __getitem__(self, key: str) -> _Setting:
         return _Setting(name=key, parent=self)
@@ -39,20 +39,21 @@ class Settings:
         if isinstance(val, _Setting):
             pass
         elif isinstance(val, bool):
-            self._conf[key] = (_OP.exact, "")
+            self._conf.setdefault(key, []).append((_OP.exact, ""))
         elif isinstance(val, int):
-            self._conf[key] = (_OP.equals, str(val))
+            self._conf.setdefault(key, []).append((_OP.equals, str(val)))
         elif isinstance(val, str):
-            self._conf[key] = (_OP.equals, val)
+            self._conf.setdefault(key, []).append((_OP.equals, val))
         elif isinstance(val, Sequence):
-            self._conf[key] = (_OP.equals, ",".join(val))
+            self._conf.setdefault(key, []).append((_OP.equals, ",".join(val)))
         else:
             raise TypeError()
 
     def drain(self) -> Atomic:
         atomic = Atomic()
         while self._conf:
-            key, (op, val) = self._conf.popitem()
-            atomic.command(f"set {key}{op.value}{val}")
+            key, values = self._conf.popitem()
+            for op, val in values:
+                atomic.command(f"set {key}{op.value}{val}")
 
         return atomic

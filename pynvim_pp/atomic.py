@@ -43,7 +43,7 @@ class _NS:
         self._parent = parent
 
     def __getattr__(self, name: str) -> _CastReturnF:
-        if not self._parent._commited:
+        if not self._parent._committed:
             raise RuntimeError()
         else:
             if name in self._parent._ns_mapping:
@@ -59,7 +59,7 @@ class _NS:
     def __setattr__(self, key: str, val: Any) -> None:
         if key == "_parent":
             super().__setattr__(key, val)
-        elif self._parent._commited:
+        elif self._parent._committed:
             raise RuntimeError()
         else:
             assert isinstance(val, int)
@@ -68,7 +68,7 @@ class _NS:
 
 class Atomic(HasApi):
     def __init__(self) -> None:
-        self._commited = False
+        self._committed = False
         self._instructions: MutableSequence[_AtomicInstruction] = []
         self._resultset: MutableSequence[Any] = []
         self._ns_mapping: MutableMapping[str, int] = {}
@@ -92,10 +92,10 @@ class Atomic(HasApi):
         return _A(name=name, parent=self)
 
     async def commit(self, ty: Type[_T]) -> Sequence[_T]:
-        if self._commited:
+        if self._committed:
             raise RuntimeError()
         else:
-            self._commited = True
+            self._committed = True
             inst = tuple(
                 (f"{self.prefix}_{instruction}", args)
                 for instruction, args in self._instructions
