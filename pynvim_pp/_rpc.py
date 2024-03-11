@@ -120,6 +120,7 @@ def _wrap(
 
 
 async def _connect(
+    die: Future,
     reader: StreamReader,
     writer: StreamWriter,
     tx: AsyncIterable[Any],
@@ -146,6 +147,9 @@ async def _connect(
             unpacker.feed(data)
             for frame in unpacker:
                 yield frame
+
+        with suppress(InvalidStateError):
+            die.set_exception(SystemExit())
 
     await gather(rx(recv()), send())
 
@@ -194,6 +198,7 @@ class _RPClient(RPClient):
 
 @asynccontextmanager
 async def client(
+    die: Future,
     loop: AbstractEventLoop,
     socket: ServerAddr,
     default: RPCdefault,
@@ -249,7 +254,9 @@ async def client(
 
     hooker = _Hooker()
     reader, writer = await _conn(socket)
-    conn = create_task(_connect(reader, writer=writer, tx=tx(), rx=rx, hooker=hooker))
+    conn = create_task(
+        _connect(die, reader=reader, writer=writer, tx=tx(), rx=rx, hooker=hooker)
+    )
     rpc = _RPClient(loop, tx=tx_q, rx=rx_q, notifs=methods)
 
     await rpc.notify(

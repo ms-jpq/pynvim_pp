@@ -9,7 +9,7 @@ from itertools import chain
 from os.path import normpath
 from pathlib import Path, PurePath
 from string import ascii_uppercase
-from threading import Thread
+from threading import Event, Thread
 from typing import (
     Any,
     AsyncIterator,
@@ -244,7 +244,9 @@ class _Nvim(HasApi, HasChan):
 
 
 @asynccontextmanager
-async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClient]:
+async def conn(
+    die: Future, socket: ServerAddr, default: RPCdefault
+) -> AsyncIterator[RPClient]:
     ext_types = (Tabpage, Window, Buffer)
     loop = get_running_loop()
     f1: Future = Future()
@@ -253,7 +255,7 @@ async def conn(socket: ServerAddr, default: RPCdefault) -> AsyncIterator[RPClien
     @asynccontextmanager
     async def _conn() -> AsyncIterator[RPClient]:
         async with client(
-            loop, socket=socket, default=default, ext_types=ext_types
+            die, loop=loop, socket=socket, default=default, ext_types=ext_types
         ) as rpc:
             for cls in (_Nvim, Atomic, *ext_types, _Lua, _Fn, _Vvars, _Cur):
                 c = cast(HasApi, cls)
