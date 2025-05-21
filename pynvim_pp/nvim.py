@@ -100,7 +100,10 @@ class _Lua(HasApi, HasChan):
                 else:
                     yield param
 
-        return await self.api.execute_lua(ty, _LUA_EXEC, tuple(cont()))
+        if await self.api.has("nvim-0.8"):
+            return await self.api.exec_lua(ty, _LUA_EXEC, tuple(cont()))
+        else:
+            return await self.api.execute_lua(ty, _LUA_EXEC, tuple(cont()))
 
 
 class _Nvim(HasApi, HasChan):
