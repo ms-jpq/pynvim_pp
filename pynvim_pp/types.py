@@ -31,15 +31,13 @@ NvimPos = Tuple[int, int]
 
 
 class CastReturnAF(Protocol):
-    async def __call__(self, ty: Type[_T], *args: Any) -> _T:
-        ...
+    async def __call__(self, ty: Type[_T], *args: Any) -> _T: ...
 
 
 class ApiReturnAF(Protocol):
     async def __call__(
         self, ty: Type[_T], *args: Any, prefix: Optional[str] = None
-    ) -> _T:
-        ...
+    ) -> _T: ...
 
 
 class Api:
@@ -100,11 +98,29 @@ class Vars(_ApiTargeted):
 
 
 class Opts(_ApiTargeted):
+    def _opts(self) -> MutableMapping[str, Any]:
+        if self._api.prefix == "nvim_win":
+            return {"win": next(self._that())}
+        elif self._api.prefix == "nvim_buf":
+            return {"buf": next(self._that())}
+        else:
+            return {}
+
     async def get(self, ty: Type[_T], key: str) -> _T:
-        return await self._api.get_option(ty, *self._that(), key)
+        if await self._api.has("nvim-0.10"):
+            return await self._api.get_option_value(
+                ty, key, self._opts(), prefix=HasApi.base_prefix
+            )
+        else:
+            return await self._api.get_option(ty, *self._that(), key)
 
     async def set(self, key: str, val: Any) -> None:
-        await self._api.set_option(NoneType, *self._that(), key, val)
+        if await self._api.has("nvim-0.10"):
+            await self._api.set_option_value(
+                NoneType, key, val, self._opts(), prefix=HasApi.base_prefix
+            )
+        else:
+            await self._api.set_option(NoneType, *self._that(), key, val)
 
 
 class HasApi:
