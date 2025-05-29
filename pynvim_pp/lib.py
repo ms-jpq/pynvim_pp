@@ -1,6 +1,5 @@
 from asyncio import get_running_loop
 from functools import lru_cache
-from itertools import chain
 from os import PathLike, name
 from os.path import normpath
 from pathlib import Path
@@ -23,7 +22,7 @@ def encode(text: str, encoding: _Encoding = "UTF-8") -> bytes:
     return text.encode(encoding, errors="surrogateescape")
 
 
-def decode(btext: bytes, encoding: _Encoding = "UTF-8") -> str:
+def decode(btext: Union[bytes, bytearray], encoding: _Encoding = "UTF-8") -> str:
     return btext.decode(encoding, errors="surrogateescape")
 
 
