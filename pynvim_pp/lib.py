@@ -1,9 +1,11 @@
 from asyncio import get_running_loop
+from functools import lru_cache
+from itertools import chain
 from os import PathLike, name
 from os.path import normpath
 from pathlib import Path
-from string import ascii_lowercase
-from typing import Iterator, Literal, Optional, Union
+from string import ascii_letters, ascii_lowercase
+from typing import AbstractSet, Iterator, Literal, MutableSet, Optional, Union
 from unicodedata import east_asian_width
 from urllib.parse import urlsplit
 
@@ -27,6 +29,55 @@ def decode(btext: bytes, encoding: _Encoding = "UTF-8") -> str:
 
 def recode(text: str) -> str:
     return text.encode("UTF-8", errors="ignore").decode("UTF-8")
+
+
+def _keyword_bound(spec: str) -> int:
+    if not spec:
+        return 0
+    elif spec.isdigit():
+        return int(spec)
+    elif len(spec) == 1 and spec.isascii():
+        return ord(spec)
+    else:
+        return 255
+
+
+@lru_cache()
+def keywordset(options: str) -> AbstractSet[str]:
+    acc: MutableSet[str] = set()
+    die: MutableSet[str] = set()
+
+    for chunk in reversed(options.split(",")):
+        if not chunk:
+            acc.add(",")
+
+        elif chunk == "@":
+            acc.update(ascii_letters)
+
+        elif chunk == "^@":
+            die.update(ascii_letters)
+
+        elif chunk == "^":
+            die.add(",")
+
+        elif len(chunk) == 1:
+            acc.add(chunk)
+
+        else:
+            target = acc
+            if chunk.startswith("^"):
+                target = die
+                chunk = chunk[1:]
+
+            lhs, sep, rhs = chunk.partition("-")
+            if sep != "-":
+                continue
+
+            lo, hi = _keyword_bound(lhs), _keyword_bound(rhs)
+            for i in range(lo, hi + 1):
+                target.add(chr(i))
+
+    return acc - die
 
 
 def display_width(text: str, tabsize: int) -> int:
