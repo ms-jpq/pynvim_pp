@@ -4,7 +4,7 @@ from typing import AbstractSet, MutableSequence
 
 
 def is_word(keywords: AbstractSet[str], chr: str) -> bool:
-    return ord(chr) >= 256 or chr in keywords
+    return bool(chr) and (ord(chr) >= 256 or chr in keywords)
 
 
 @dataclass(frozen=True)
