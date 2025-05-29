@@ -59,7 +59,7 @@ def keywordset(options: str) -> AbstractSet[str]:
         elif chunk == "^":
             die.add(",")
 
-        elif len(chunk) == 1:
+        elif len(chunk) == 1 and not chunk.isdigit():
             acc.add(chunk)
 
         else:
@@ -70,7 +70,10 @@ def keywordset(options: str) -> AbstractSet[str]:
 
             lhs, sep, rhs = chunk.partition("-")
             if sep != "-":
-                continue
+                if lhs.isdigit():
+                    target.add(chr(int(lhs)))
+                else:
+                    continue
 
             lo, hi = _keyword_bound(lhs), _keyword_bound(rhs)
             for i in range(lo, hi + 1):
